@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { CAT_COLOR, CAT_EMOJI, CONDICIONES_VENTA } from '../constants/categories.js';
 
 function Pill({ label, active, onClick, color = "var(--accent)", emoji }) {
@@ -10,8 +11,22 @@ function Pill({ label, active, onClick, color = "var(--accent)", emoji }) {
     );
 }
 
-function SectionLabel({ children }) {
-    return <div className="section-label">{children}</div>;
+function SectionLabel({ children, onSearchChange, searchValue, placeholder = "Buscar..." }) {
+    return (
+        <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+            <div className="section-label" style={{ margin: 0 }}>{children}</div>
+            {onSearchChange && (
+                <div className="mini-search">
+                    <input
+                        type="text"
+                        placeholder={placeholder}
+                        value={searchValue}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                    />
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function FilterPanel({
@@ -28,14 +43,24 @@ export default function FilterPanel({
     // data
     categorias, ALPHABET, letrasConMarcas, marcasDeLetra, lineas, tipos,
 }) {
+    const [searchMarca, setSearchMarca] = useState("");
+    const [searchLinea, setSearchLinea] = useState("");
+    const [searchTipo, setSearchTipo] = useState("");
+
     const accent = CAT_COLOR[filterCat] || "var(--accent)";
 
     const handleCatClick = (c) => {
         setFilterCat(c);
         setFilterLinea("Todas");
         setFilterTipo("Todos");
-        // reset condición si cambia a lista que no es 1
+        setSearchLinea("");
+        setSearchTipo("");
     };
+
+    // Filtered lists
+    const filteredMarcas = marcasDeLetra.filter(m => m.toLowerCase().includes(searchMarca.toLowerCase()));
+    const filteredLineas = lineas.filter(l => l.toLowerCase().includes(searchLinea.toLowerCase()));
+    const filteredTipos = tipos.filter(t => t.toLowerCase().includes(searchTipo.toLowerCase()));
 
     return (
         <div className="card animate-fadeIn" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -54,23 +79,36 @@ export default function FilterPanel({
                 />
             </div>
 
-            {/* Lista de precios */}
-            <div>
-                <SectionLabel>Lista de Precios</SectionLabel>
-                <div style={{ display: "flex", gap: 6 }}>
-                    {["Lista 1", "Lista 2", "Lista 3"].map(lista => (
-                        <button
-                            key={lista}
-                            className={`lista-btn ${filterLista === lista ? "active" : ""}`}
-                            style={filterLista === lista ? { background: accent, borderColor: accent, boxShadow: `0 3px 10px ${accent}50` } : {}}
-                            onClick={() => {
-                                setFilterLista(lista);
-                                if (lista !== "Lista 1") setCondicionVenta(0);
-                            }}
-                        >
-                            {lista}
-                        </button>
-                    ))}
+            {/* Fila Superior: Listas + Stock */}
+            <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 16 }}>
+                {/* Lista de precios */}
+                <div>
+                    <SectionLabel>Lista de Precios</SectionLabel>
+                    <div style={{ display: "flex", gap: 6 }}>
+                        {["Lista 1", "Lista 2", "Lista 3"].map(lista => (
+                            <button
+                                key={lista}
+                                className={`lista-btn ${filterLista === lista ? "active" : ""}`}
+                                style={filterLista === lista ? { background: accent, borderColor: accent, boxShadow: `0 3px 10px ${accent}50` } : {}}
+                                onClick={() => {
+                                    setFilterLista(lista);
+                                    if (lista !== "Lista 1") setCondicionVenta(0);
+                                }}
+                            >
+                                {lista}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                {/* Stock */}
+                <div>
+                    <SectionLabel>Stock</SectionLabel>
+                    <div style={{ display: "flex", gap: 5 }}>
+                        {["Todos", "Con Stock", "Sin Stock"].map(s => (
+                            <Pill key={s} label={s} active={filterStock === s} color={accent} onClick={() => setFilterStock(s)} />
+                        ))}
+                    </div>
                 </div>
             </div>
 
@@ -95,7 +133,7 @@ export default function FilterPanel({
                     </div>
                     {condicionVenta > 0 && (
                         <div style={{ marginTop: 8, fontSize: 11, color: "var(--green)", fontWeight: 500 }}>
-                            💡 Se aplica <strong>{condicionVenta}%</strong> de descuento adicional a Lista 1, acumulable con descuentos de promo/bundle.
+                            💡 Se aplica <strong>{condicionVenta}%</strong> de descuento adicional a Lista 1.
                         </div>
                     )}
                 </div>
@@ -114,21 +152,16 @@ export default function FilterPanel({
                 </div>
             </div>
 
-            {/* Stock */}
-            <div>
-                <SectionLabel>Stock</SectionLabel>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
-                    {["Todos", "Con Stock", "Sin Stock"].map(s => (
-                        <Pill key={s} label={s} active={filterStock === s} color={accent} onClick={() => setFilterStock(s)} />
-                    ))}
-                </div>
-            </div>
-
             {/* Marca (A-Z) + Línea + Tipo */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1.5fr", gap: 14 }}>
                 {/* Marca */}
                 <div>
-                    <SectionLabel>Marca</SectionLabel>
+                    <SectionLabel
+                        onSearchChange={filterLetra ? setSearchMarca : null}
+                        searchValue={searchMarca}
+                        placeholder="Filtrar marca..."
+                    >Marca</SectionLabel>
+
                     <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 7 }}>
                         {ALPHABET.map(l => {
                             const hasItems = letrasConMarcas.has(l);
@@ -139,45 +172,66 @@ export default function FilterPanel({
                                     style={active ? { background: accent, borderColor: accent } : {}}
                                     onClick={() => {
                                         if (!hasItems) return;
-                                        const next = active ? "" : l;
-                                        setFilterLetra(next);
-                                        setFilterMarca("Todas");
+                                        if (active) {
+                                            setFilterLetra("");
+                                            setFilterMarca("Todas");
+                                            setSearchMarca("");
+                                        } else {
+                                            setFilterLetra(l);
+                                            setFilterMarca("Todas");
+                                            setSearchMarca("");
+                                        }
                                     }}
                                 >{l}</button>
                             );
                         })}
                     </div>
-                    {filterLetra ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxHeight: 84, overflowY: "auto", padding: "2px 0" }}>
-                            <Pill label="Todas" active={filterMarca === "Todas"} color={accent} onClick={() => setFilterMarca("Todas")} />
-                            {marcasDeLetra.map(m => (
-                                <Pill key={m} label={m} active={filterMarca === m} color={accent} onClick={() => setFilterMarca(m)} />
-                            ))}
-                        </div>
-                    ) : (
-                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
-                            Seleccioná una letra
-                        </div>
-                    )}
+
+                    <div className="filter-scroll-box">
+                        {filterLetra ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                                <Pill label="Todas" active={filterMarca === "Todas"} color={accent} onClick={() => setFilterMarca("Todas")} />
+                                {filteredMarcas.map(m => (
+                                    <Pill key={m} label={m} active={filterMarca === m} color={accent} onClick={() => setFilterMarca(m)} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", padding: "10px 0" }}>
+                                Seleccioná una letra
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Línea */}
                 <div>
-                    <SectionLabel>Línea</SectionLabel>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                        {lineas.map(l => (
-                            <Pill key={l} label={l} active={filterLinea === l} color={accent} onClick={() => setFilterLinea(l)} />
-                        ))}
+                    <SectionLabel
+                        onSearchChange={lineas.length > 5 ? setSearchLinea : null}
+                        searchValue={searchLinea}
+                        placeholder="Filtrar línea..."
+                    >Línea</SectionLabel>
+                    <div className="filter-scroll-box">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            {filteredLineas.map(l => (
+                                <Pill key={l} label={l} active={filterLinea === l} color={accent} onClick={() => setFilterLinea(l)} />
+                            ))}
+                        </div>
                     </div>
                 </div>
 
                 {/* Tipo */}
                 <div>
-                    <SectionLabel>Tipo de Producto</SectionLabel>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                        {tipos.map(t => (
-                            <Pill key={t} label={t} active={filterTipo === t} color={accent} onClick={() => setFilterTipo(t)} />
-                        ))}
+                    <SectionLabel
+                        onSearchChange={tipos.length > 5 ? setSearchTipo : null}
+                        searchValue={searchTipo}
+                        placeholder="Filtrar tipo..."
+                    >Tipo de Producto</SectionLabel>
+                    <div className="filter-scroll-box">
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                            {filteredTipos.map(t => (
+                                <Pill key={t} label={t} active={filterTipo === t} color={accent} onClick={() => setFilterTipo(t)} />
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>

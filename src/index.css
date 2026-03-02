@@ -772,3 +772,50 @@ input[type="range"]::-webkit-slider-thumb {
 .btn-logout:hover {
   background: rgba(220, 38, 38, .12);
 }
+/*  UX Filters  */
+.section-header {
+  margin-bottom: 10px;
+}
+
+.mini-search {
+  flex-shrink: 0;
+  width: 130px;
+}
+
+.mini-search input {
+  width: 100%;
+  padding: 4px 10px;
+  border-radius: 6px;
+  border: 1.5px solid var(--border);
+  background: var(--bg-base);
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--text-primary);
+  outline: none;
+  transition: all .15s var(--ease);
+}
+
+.mini-search input:focus {
+  border-color: var(--accent);
+  background: var(--bg-surface);
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, .08);
+}
+
+.filter-scroll-box {
+  max-height: 140px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.filter-scroll-box::-webkit-scrollbar {
+  width: 4px;
+}
+
+.filter-scroll-box::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 10px;
+}
+
+.filter-scroll-box::-webkit-scrollbar-track {
+  background: transparent;
+}
