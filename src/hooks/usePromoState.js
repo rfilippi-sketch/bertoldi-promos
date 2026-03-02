@@ -257,15 +257,20 @@ export function usePromoState() {
                     // La línea se calcula al vuelo o se puede añadir la columna a la DB
                 }));
 
-                setCsvMsg("Sincronizando con la nube...");
+                setCsvMsg("Sincronizando con la nube (puede demorar)...");
                 setStorageStatus("saving");
 
-                // Upsert masivo en Supabase
-                const { error } = await supabase
-                    .from('productos')
-                    .upsert(toUpload, { onConflict: 'id' });
+                // Upsert masivo en lotes (chunks) de 1000 para evitar límites de payload o truncamiento de Supabase
+                const chunkSize = 1000;
+                for (let i = 0; i < toUpload.length; i += chunkSize) {
+                    const chunk = toUpload.slice(i, i + chunkSize);
+                    setCsvMsg(`Sincronizando lote ${i / chunkSize + 1}...`);
+                    const { error } = await supabase
+                        .from('productos')
+                        .upsert(chunk, { onConflict: 'id' });
 
-                if (error) throw error;
+                    if (error) throw error;
+                }
 
                 setProductos(enriched);
                 setCsvMsg(`✅ ${enriched.length.toLocaleString("es-AR")} sincronizados en la nube`);
