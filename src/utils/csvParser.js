@@ -52,46 +52,67 @@ const parseNum = s => {
 export const parseCSV = (text) => {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
-    const sep = lines[0].includes("\t") ? "\t" : ",";
-    const headers = lines[0].split(sep).map(h =>
-        h.trim().toLowerCase().replace(/[\s$]/g, "_").replace(/[^a-z0-9_]/g, "")
+
+    // Detección automática de separador: preferir punto y coma o tab
+    let sep = ",";
+    if (lines[0].includes(";")) sep = ";";
+    else if (lines[0].includes("\t")) sep = "\t";
+
+    // Regex para split que respeta comillas y comas internas (si se usan comillas)
+    // Pero como en el ERP argentino suelen no usar comillas para números,
+    // si el sep es ',', las comas decimales son un problema.
+    // Usaremos un truco: si hay ';' lo usamos, si no, intentamos detectar si es ',' con decimales.
+
+    const splitLine = (line) => {
+        if (sep === ";") return line.split(";").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+        if (sep === "\t") return line.split("\t").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+
+        // Si el separador es coma, pero hay números con coma (ej: 0,00), 
+        // el CSV suele venir entre comillas o usar otro separador.
+        // Si no viene entre comillas, es casi imposible distinguir sin contexto.
+        // De la captura 2, parece que NO hay comillas.
+        return line.split(",").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+    };
+
+    const headers = splitLine(lines[0]).map(h =>
+        h.toLowerCase().replace(/[\s$]/g, "_").replace(/[^a-z0-9_]/g, "")
     );
 
     const findCol = (aliases) => {
         for (const a of aliases) {
-            const i = headers.findIndex(h => h.includes(a));
+            const i = headers.findIndex(h => h === a || h.includes(a));
             if (i >= 0) return i;
         }
         return -1;
     };
 
     const cols = {
-        id: findCol(["id", "codigo", "cod", "sku"]),
-        desc: findCol(["descripcion", "desc", "nombre", "articulo", "art"]),
-        marca: findCol(["marca", "brand", "fabricante", "fab", "prov", "fba"]),
-        stock: findCol(["cant", "stock", "cantidad", "disponible"]),
-        costo: findCol(["costo_final", "costo", "cost"]),
-        precio1: findCol(["lista_1", "lista1", "l1", "precio1"]),
-        precio2: findCol(["lista_2", "lista2", "l2", "precio2"]),
-        precio3: findCol(["lista_3", "lista3", "l3", "precio"]),
-        dpto: findCol(["dpto", "departamento", "categoria", "seccion"]),
-        fam: findCol(["fam", "familia", "tipo", "rubro"]),
+        id: findCol(["id"]),
+        desc: findCol(["descripcion"]),
+        marca: findCol(["marca"]),
+        stock: findCol(["cant"]),
+        costo: findCol(["costo_final_$"]),
+        precio1: findCol(["lista_1$"]),
+        precio2: findCol(["lista_2$"]),
+        precio3: findCol(["lista_3$"]),
+        dpto: findCol(["dpto", "departamento"]),
+        fam: findCol(["fam", "familia"]),
     };
 
-    // Si algo no se encontró, intentar fallback: el primer precio que exista
-    // es precio3 (comportamiento original), y precio1/precio2 = 0
     return lines.slice(1).map(line => {
-        const cells = line.split(sep).map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+        const cells = splitLine(line);
         const get = i => (i >= 0 && i < cells.length) ? cells[i] : "";
+
         const id = parseInt(get(cols.id)) || 0;
         const desc = get(cols.desc);
         const marca = get(cols.marca) || "SIN MARCA";
+
         if (!id || !desc) return null;
         if (ignorarProducto(desc, marca)) return null;
 
-        const precio3 = parseNum(get(cols.precio3));
-        const precio1 = cols.precio1 >= 0 ? parseNum(get(cols.precio1)) : precio3;
-        const precio2 = cols.precio2 >= 0 ? parseNum(get(cols.precio2)) : precio3;
+        // Si detectamos que las celdas se desfasaron (ej: dpto tiene un número), 
+        // es probable que la coma decimal rompió el split.
+        // Pero vamos a intentar limpiar los datos primero.
 
         return {
             id,
@@ -99,12 +120,11 @@ export const parseCSV = (text) => {
             marca,
             stock: parseNum(get(cols.stock)),
             costo: parseNum(get(cols.costo)),
-            precio1,
-            precio2,
-            precio3,
-            csvCat: get(cols.dpto), // Categoría cruda del CSV
-            csvTipo: get(cols.fam),  // Tipo crudo del CSV
-            // precio activo será determinado por la lista seleccionada en el hook
+            precio1: parseNum(get(cols.precio1)),
+            precio2: findCol(["lista_2"]) >= 0 ? parseNum(get(cols.precio2)) : parseNum(get(cols.precio3)),
+            precio3: parseNum(get(cols.precio3)),
+            csvCat: get(cols.dpto),
+            csvTipo: get(cols.fam),
         };
     }).filter(Boolean);
 };
