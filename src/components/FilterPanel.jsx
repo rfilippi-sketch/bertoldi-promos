@@ -36,12 +36,14 @@ export default function FilterPanel({
     filterMarca, setFilterMarca,
     filterLinea, setFilterLinea,
     filterTipo, setFilterTipo,
+    filterTipoLetra, setFilterTipoLetra,
     filterStock, setFilterStock,
     filterLista, setFilterLista,
     condicionVenta, setCondicionVenta,
     search, setSearch,
     // data
     categorias, ALPHABET, letrasConMarcas, marcasDeLetra, lineas, tipos,
+    letrasConTipos, tiposDeLetra,
 }) {
     const [searchMarca, setSearchMarca] = useState("");
     const [searchLinea, setSearchLinea] = useState("");
@@ -53,6 +55,7 @@ export default function FilterPanel({
         setFilterCat(c);
         setFilterLinea("Todas");
         setFilterTipo("Todos");
+        setFilterTipoLetra("");
         setSearchLinea("");
         setSearchTipo("");
     };
@@ -60,7 +63,7 @@ export default function FilterPanel({
     // Filtered lists
     const filteredMarcas = marcasDeLetra.filter(m => m.toLowerCase().includes(searchMarca.toLowerCase()));
     const filteredLineas = lineas.filter(l => l.toLowerCase().includes(searchLinea.toLowerCase()));
-    const filteredTipos = tipos.filter(t => t.toLowerCase().includes(searchTipo.toLowerCase()));
+    const filteredTipos = tiposDeLetra.filter(t => t.toLowerCase().includes(searchTipo.toLowerCase()));
 
     return (
         <div className="card animate-fadeIn" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -222,16 +225,49 @@ export default function FilterPanel({
                 {/* Tipo */}
                 <div>
                     <SectionLabel
-                        onSearchChange={tipos.length > 5 ? setSearchTipo : null}
+                        onSearchChange={filterTipoLetra ? setSearchTipo : null}
                         searchValue={searchTipo}
                         placeholder="Filtrar tipo..."
                     >Tipo de Producto</SectionLabel>
+
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 7 }}>
+                        {ALPHABET.map(l => {
+                            const hasItems = letrasConTipos.has(l);
+                            const active = filterTipoLetra === l;
+                            return (
+                                <button key={l}
+                                    className={`alpha-btn ${hasItems ? "has-items" : ""} ${active ? "active" : ""}`}
+                                    style={active ? { background: accent, borderColor: accent } : {}}
+                                    onClick={() => {
+                                        if (!hasItems) return;
+                                        if (active) {
+                                            setFilterTipoLetra("");
+                                            setFilterTipo("Todos");
+                                            setSearchTipo("");
+                                        } else {
+                                            setFilterTipoLetra(l);
+                                            setFilterTipo("Todos");
+                                            setSearchTipo("");
+                                        }
+                                    }}
+                                >{l}</button>
+                            );
+                        })}
+                    </div>
+
                     <div className="filter-scroll-box">
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                            {filteredTipos.map(t => (
-                                <Pill key={t} label={t} active={filterTipo === t} color={accent} onClick={() => setFilterTipo(t)} />
-                            ))}
-                        </div>
+                        {filterTipoLetra ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                                <Pill label="Todos" active={filterTipo === "Todos"} color={accent} onClick={() => setFilterTipo("Todos")} />
+                                {filteredTipos.map(t => (
+                                    <Pill key={t} label={t} active={filterTipo === t} color={accent} onClick={() => setFilterTipo(t)} />
+                                ))}
+                            </div>
+                        ) : (
+                            <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic", padding: "10px 0" }}>
+                                Seleccioná una letra
+                            </div>
+                        )}
                     </div>
                 </div>
             </div>

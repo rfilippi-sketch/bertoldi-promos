@@ -91,6 +91,7 @@ function AppContent({ user, onLogout }) {
             filterMarca={state.filterMarca} setFilterMarca={state.setFilterMarca}
             filterLinea={state.filterLinea} setFilterLinea={state.setFilterLinea}
             filterTipo={state.filterTipo} setFilterTipo={state.setFilterTipo}
+            filterTipoLetra={state.filterTipoLetra} setFilterTipoLetra={state.setFilterTipoLetra}
             filterStock={state.filterStock} setFilterStock={state.setFilterStock}
             filterLista={state.filterLista} setFilterLista={state.setFilterLista}
             condicionVenta={state.condicionVenta} setCondicionVenta={state.setCondicionVenta}
@@ -101,6 +102,8 @@ function AppContent({ user, onLogout }) {
             marcasDeLetra={state.marcasDeLetra}
             lineas={state.lineas}
             tipos={state.tipos}
+            letrasConTipos={state.letrasConTipos}
+            tiposDeLetra={state.tiposDeLetra}
           />
 
           {/* Product list */}

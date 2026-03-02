@@ -24,6 +24,7 @@ export function usePromoState() {
     const [filterLetra, setFilterLetra] = useState("");
     const [filterMarca, setFilterMarca] = useState("Todas");
     const [filterLinea, setFilterLinea] = useState("Todas");
+    const [filterTipoLetra, setFilterTipoLetra] = useState("");
     const [filterTipo, setFilterTipo] = useState("Todos");
     const [filterStock, setFilterStock] = useState("Todos");
     const [filterLista, setFilterLista] = useState(() => localStorage.getItem('f_lista') || "Lista 3");
@@ -115,6 +116,24 @@ export function usePromoState() {
         const base = filterCat === "Todas" ? productos : productos.filter(p => p.categoria === filterCat);
         return ["Todas", ...Array.from(new Set(base.map(p => p.linea))).sort()];
     }, [productos, filterCat]);
+
+    const tiposByLetra = useMemo(() => {
+        const base = productos.filter(p =>
+            (filterCat === "Todas" || p.categoria === filterCat) &&
+            (filterLinea === "Todas" || p.linea === filterLinea)
+        );
+        const all = Array.from(new Set(base.map(p => p.tipo))).sort();
+        const g = {};
+        for (const t of all) {
+            const l = /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(t) ? t[0].toUpperCase() : "#";
+            if (!g[l]) g[l] = [];
+            g[l].push(t);
+        }
+        return g;
+    }, [productos, filterCat, filterLinea]);
+
+    const letrasConTipos = useMemo(() => new Set(Object.keys(tiposByLetra)), [tiposByLetra]);
+    const tiposDeLetra = useMemo(() => (filterTipoLetra ? tiposByLetra[filterTipoLetra] || [] : []), [tiposByLetra, filterTipoLetra]);
 
     const tipos = useMemo(() => {
         const base = productos.filter(p =>
@@ -250,9 +269,11 @@ export function usePromoState() {
         bundleDiscount, setBundleDiscount, bundleProductDiscounts, setBundleProductDiscounts,
         productDiscounts, setProductDiscounts, filterCat, setFilterCat, filterLetra, setFilterLetra,
         filterMarca, setFilterMarca, filterLinea, setFilterLinea, filterTipo, setFilterTipo,
+        filterTipoLetra, setFilterTipoLetra,
         filterStock, setFilterStock, filterLista, setFilterLista, condicionVenta, setCondicionVenta,
         search, setSearch, csvMsg, importing, fileRef, ALPHABET, categorias, marcasByLetra,
-        letrasConMarcas, marcasDeLetra, lineas, tipos, filtered, hasIndivBundleDisc,
+        letrasConMarcas, marcasDeLetra, tiposByLetra, letrasConTipos, tiposDeLetra,
+        lineas, tipos, filtered, hasIndivBundleDisc,
         sliderLocked, inputsLocked, bundleCalc, discountedProducts, getPrecio,
         handleCSV, toggleSelect, clearAll, resetBundleMode, selectAll,
     };
