@@ -70,25 +70,46 @@ export const parseCSV = (text) => {
 
     const splitLine = (line) => {
         if (!line) return [];
-        // Si hay comillas, usar un split más complejo. Si no, split simple.
+        let rawCells = [];
+
         if (line.includes('"')) {
-            const result = [];
             let current = "";
             let inQuotes = false;
             for (let i = 0; i < line.length; i++) {
                 const char = line[i];
                 if (char === '"') inQuotes = !inQuotes;
                 else if (char === sep && !inQuotes) {
-                    result.push(current.trim());
+                    rawCells.push(current.trim());
                     current = "";
                 } else {
                     current += char;
                 }
             }
-            result.push(current.trim());
-            return result.map(c => c.replace(/^"(.*)"$/, "$1"));
+            rawCells.push(current.trim());
+        } else {
+            rawCells = line.split(sep).map(c => c.trim());
         }
-        return line.split(sep).map(c => c.trim());
+
+        // HEURÍSTICA: Si el separador es coma y tenemos más celdas que columnas 
+        // esperadas (10), es muy probable que una coma decimal (ej: 0,00) haya 
+        // roto la línea. Intentamos unir celdas numéricas consecutivas.
+        if (sep === "," && rawCells.length > 10) {
+            const fixed = [];
+            for (let i = 0; i < rawCells.length; i++) {
+                const current = rawCells[i];
+                const next = rawCells[i + 1];
+                // Si el actual es un número y el siguiente es "00" o similar
+                if (next && /^\d+$/.test(current) && /^\d{2}$/.test(next)) {
+                    fixed.push(current + "." + next);
+                    i++; // saltar el siguiente
+                } else {
+                    fixed.push(current);
+                }
+            }
+            return fixed.map(c => c.replace(/^"(.*)"$/, "$1"));
+        }
+
+        return rawCells.map(c => c.replace(/^"(.*)"$/, "$1"));
     };
 
     const headers = splitLine(lines[0]).map(h =>

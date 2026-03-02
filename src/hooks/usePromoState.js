@@ -95,16 +95,20 @@ export function usePromoState() {
     }, [filterLista]);
 
     // ── Metadatos de filtros (Memoized) ─────────────────────────────────────────
-    const ALPHABET = ["#", "A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
+    const ALPHABET = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z"];
     const categorias = useMemo(() => ["Todas", ...Array.from(new Set(productos.map(p => p.categoria))).sort()], [productos]);
 
     const marcasByLetra = useMemo(() => {
         const all = Array.from(new Set(productos.map(p => p.marca))).sort();
         const g = {};
         for (const m of all) {
-            const l = /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(m) ? m[0].toUpperCase() : "#";
-            if (!g[l]) g[l] = [];
-            g[l].push(m);
+            if (!m) continue;
+            // Solo procesar si empieza con una letra
+            if (/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(m)) {
+                const l = m[0].toUpperCase();
+                if (!g[l]) g[l] = [];
+                g[l].push(m);
+            }
         }
         return g;
     }, [productos]);
@@ -125,9 +129,15 @@ export function usePromoState() {
         const all = Array.from(new Set(base.map(p => p.tipo))).sort();
         const g = {};
         for (const t of all) {
-            const l = /^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(t) ? t[0].toUpperCase() : "#";
-            if (!g[l]) g[l] = [];
-            g[l].push(t);
+            if (!t) continue;
+            // Filtrar tipos que sean solo números (ej: 0.00, 101.00)
+            if (/^\d+(\.\d+)?$/.test(t.replace(",", "."))) continue;
+
+            if (/^[A-Za-zÀ-ÖØ-öø-ÿ]/.test(t)) {
+                const l = t[0].toUpperCase();
+                if (!g[l]) g[l] = [];
+                g[l].push(t);
+            }
         }
         return g;
     }, [productos, filterCat, filterLinea]);
@@ -140,7 +150,10 @@ export function usePromoState() {
             (filterCat === "Todas" || p.categoria === filterCat) &&
             (filterLinea === "Todas" || p.linea === filterLinea)
         );
-        return ["Todos", ...Array.from(new Set(base.map(p => p.tipo))).sort()];
+        const unique = Array.from(new Set(base.map(p => p.tipo)))
+            .filter(t => t && !/^\d+(\.\d+)?$/.test(t.replace(",", ".")))
+            .sort();
+        return ["Todos", ...unique];
     }, [productos, filterCat, filterLinea]);
 
     // ── Filtrado ───────────────────────────────────────────────────────────────
