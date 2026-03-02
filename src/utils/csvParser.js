@@ -53,25 +53,42 @@ export const parseCSV = (text) => {
     const lines = text.trim().split(/\r?\n/);
     if (lines.length < 2) return [];
 
-    // Detección automática de separador: preferir punto y coma o tab
-    let sep = ",";
-    if (lines[0].includes(";")) sep = ";";
-    else if (lines[0].includes("\t")) sep = "\t";
+    // Detección automática de separador robusta
+    const sample = lines.slice(0, 5).join("\n");
+    const counts = {
+        ";": (sample.match(/;/g) || []).length,
+        "\t": (sample.match(/\t/g) || []).length,
+        ",": (sample.match(/,/g) || []).length
+    };
 
-    // Regex para split que respeta comillas y comas internas (si se usan comillas)
-    // Pero como en el ERP argentino suelen no usar comillas para números,
-    // si el sep es ',', las comas decimales son un problema.
-    // Usaremos un truco: si hay ';' lo usamos, si no, intentamos detectar si es ',' con decimales.
+    // Elegir el que más aparezca, dando prioridad a ; y \t sobre , 
+    // porque , se usa frecuentemente como decimal en AR.
+    let sep = ",";
+    if (counts[";"] > counts["\t"] && counts[";"] > counts[","]) sep = ";";
+    else if (counts["\t"] > counts[";"] && counts["\t"] > counts[","]) sep = "\t";
+    else if (counts[";"] > 0) sep = ";"; // Si hay algún punto y coma, probablemente sea ese
 
     const splitLine = (line) => {
-        if (sep === ";") return line.split(";").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
-        if (sep === "\t") return line.split("\t").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
-
-        // Si el separador es coma, pero hay números con coma (ej: 0,00), 
-        // el CSV suele venir entre comillas o usar otro separador.
-        // Si no viene entre comillas, es casi imposible distinguir sin contexto.
-        // De la captura 2, parece que NO hay comillas.
-        return line.split(",").map(c => c.trim().replace(/^"(.*)"$/, "$1"));
+        if (!line) return [];
+        // Si hay comillas, usar un split más complejo. Si no, split simple.
+        if (line.includes('"')) {
+            const result = [];
+            let current = "";
+            let inQuotes = false;
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') inQuotes = !inQuotes;
+                else if (char === sep && !inQuotes) {
+                    result.push(current.trim());
+                    current = "";
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current.trim());
+            return result.map(c => c.replace(/^"(.*)"$/, "$1"));
+        }
+        return line.split(sep).map(c => c.trim());
     };
 
     const headers = splitLine(lines[0]).map(h =>
