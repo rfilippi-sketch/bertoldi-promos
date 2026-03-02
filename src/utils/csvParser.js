@@ -67,16 +67,15 @@ export const parseCSV = (text) => {
 
     const cols = {
         id: findCol(["id", "codigo", "cod", "sku"]),
-        desc: findCol(["descripcion", "desc", "nombre"]),
-        marca: findCol(["marca", "brand"]),
-        stock: findCol(["cant", "stock", "cantidad"]),
+        desc: findCol(["descripcion", "desc", "nombre", "articulo", "art"]),
+        marca: findCol(["marca", "brand", "fabricante", "fab", "prov", "fba"]),
+        stock: findCol(["cant", "stock", "cantidad", "disponible"]),
         costo: findCol(["costo_final", "costo", "cost"]),
         precio1: findCol(["lista_1", "lista1", "l1", "precio1"]),
         precio2: findCol(["lista_2", "lista2", "l2", "precio2"]),
         precio3: findCol(["lista_3", "lista3", "l3", "precio"]),
-        // Nuevas columnas detectadas en la captura
-        dpto: findCol(["dpto", "departamento", "categoria"]),
-        fam: findCol(["fam", "familia", "tipo"]),
+        dpto: findCol(["dpto", "departamento", "categoria", "seccion"]),
+        fam: findCol(["fam", "familia", "tipo", "rubro"]),
     };
 
     // Si algo no se encontró, intentar fallback: el primer precio que exista

@@ -60,6 +60,14 @@ export default function FilterPanel({
         setSearchTipo("");
     };
 
+    const handleMarcaClick = (m) => {
+        setFilterMarca(m);
+        setFilterLinea("Todas");
+        setFilterTipo("Todos");
+        setFilterTipoLetra("");
+        setSearchTipo("");
+    };
+
     // Filtered lists
     const filteredMarcas = marcasDeLetra.filter(m => m.toLowerCase().includes(searchMarca.toLowerCase()));
     const filteredLineas = lineas.filter(l => l.toLowerCase().includes(searchLinea.toLowerCase()));
@@ -193,9 +201,9 @@ export default function FilterPanel({
                     <div className="filter-scroll-box">
                         {filterLetra ? (
                             <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
-                                <Pill label="Todas" active={filterMarca === "Todas"} color={accent} onClick={() => setFilterMarca("Todas")} />
+                                <Pill label="Todas" active={filterMarca === "Todas"} color={accent} onClick={() => handleMarcaClick("Todas")} />
                                 {filteredMarcas.map(m => (
-                                    <Pill key={m} label={m} active={filterMarca === m} color={accent} onClick={() => setFilterMarca(m)} />
+                                    <Pill key={m} label={m} active={filterMarca === m} color={accent} onClick={() => handleMarcaClick(m)} />
                                 ))}
                             </div>
                         ) : (
