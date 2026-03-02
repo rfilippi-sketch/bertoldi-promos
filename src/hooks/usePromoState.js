@@ -12,7 +12,7 @@ const seedEnriched = SEED_PRODUCTS.map(p => enrich({
 }));
 
 export function usePromoState() {
-    const [productos, setProductos] = useState(seedEnriched);
+    const [productos, setProductos] = useState([]);
     const [storageStatus, setStorageStatus] = useState("loading");
     const [storageInfo, setStorageInfo] = useState("");
     const [tab, setTab] = useState(() => localStorage.getItem('f_tab') || "bundle");
