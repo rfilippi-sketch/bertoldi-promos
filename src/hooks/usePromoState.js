@@ -45,15 +45,33 @@ export function usePromoState() {
     const fetchProducts = useCallback(async () => {
         setStorageStatus("loading");
         try {
-            const { data, error } = await supabase
-                .from('productos')
-                .select('*')
-                .order('descripcion', { ascending: true });
+            let allData = [];
+            let page = 0;
+            const pageSize = 1000;
+            let hasMore = true;
 
-            if (error) throw error;
+            while (hasMore) {
+                const { data, error } = await supabase
+                    .from('productos')
+                    .select('*')
+                    .range(page * pageSize, (page + 1) * pageSize - 1)
+                    .order('id', { ascending: true });
 
-            if (data && data.length > 0) {
-                const mapped = data.map(p => ({
+                if (error) throw error;
+
+                if (data && data.length > 0) {
+                    allData = [...allData, ...data];
+                    if (data.length < pageSize) hasMore = false;
+                    page++;
+                    // Mostrar progreso opcionalmente
+                    setStorageInfo(`Sincronizando ${allData.length.toLocaleString("es-AR")}...`);
+                } else {
+                    hasMore = false;
+                }
+            }
+
+            if (allData.length > 0) {
+                const mapped = allData.map(p => ({
                     id: p.id,
                     desc: p.descripcion,
                     marca: p.marca,
@@ -64,9 +82,8 @@ export function usePromoState() {
                     precio3: p.precio_3,
                     categoria: p.categoria,
                     tipo: p.tipo,
-                    linea: '' // Podríamos re-enriquecer si es necesario
+                    linea: ''
                 }));
-                // Enriquecemos para tener la línea (que no está en la DB por ahora)
                 const enriched = mapped.map(enrich);
                 setProductos(enriched);
                 setStorageStatus("loaded");
@@ -81,7 +98,7 @@ export function usePromoState() {
             setStorageStatus("error");
             setStorageInfo("error de conexión con la nube");
         }
-    }, []);
+    }, [seedEnriched]);
 
     useEffect(() => {
         fetchProducts();
