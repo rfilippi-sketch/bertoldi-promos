@@ -1,0 +1,186 @@
+import { CAT_COLOR, CAT_EMOJI, CONDICIONES_VENTA } from '../constants/categories.js';
+
+function Pill({ label, active, onClick, color = "var(--accent)", emoji }) {
+    return (
+        <button className={`pill ${active ? "pill--active" : ""}`} onClick={onClick}
+            style={active ? { background: color, boxShadow: `0 3px 10px ${color}60` } : {}}>
+            {emoji && <span>{emoji}</span>}
+            {label}
+        </button>
+    );
+}
+
+function SectionLabel({ children }) {
+    return <div className="section-label">{children}</div>;
+}
+
+export default function FilterPanel({
+    // filters
+    filterCat, setFilterCat,
+    filterLetra, setFilterLetra,
+    filterMarca, setFilterMarca,
+    filterLinea, setFilterLinea,
+    filterTipo, setFilterTipo,
+    filterStock, setFilterStock,
+    filterLista, setFilterLista,
+    condicionVenta, setCondicionVenta,
+    search, setSearch,
+    // data
+    categorias, ALPHABET, letrasConMarcas, marcasDeLetra, lineas, tipos,
+}) {
+    const accent = CAT_COLOR[filterCat] || "var(--accent)";
+
+    const handleCatClick = (c) => {
+        setFilterCat(c);
+        setFilterLinea("Todas");
+        setFilterTipo("Todos");
+        // reset condición si cambia a lista que no es 1
+    };
+
+    return (
+        <div className="card animate-fadeIn" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+
+            {/* Search */}
+            <div className="search-wrapper">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <circle cx="11" cy="11" r="8" /><line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+                <input
+                    className="search-input"
+                    type="search"
+                    placeholder="Buscar por descripción, ID o marca…"
+                    value={search}
+                    onChange={e => setSearch(e.target.value)}
+                />
+            </div>
+
+            {/* Lista de precios */}
+            <div>
+                <SectionLabel>Lista de Precios</SectionLabel>
+                <div style={{ display: "flex", gap: 6 }}>
+                    {["Lista 1", "Lista 2", "Lista 3"].map(lista => (
+                        <button
+                            key={lista}
+                            className={`lista-btn ${filterLista === lista ? "active" : ""}`}
+                            style={filterLista === lista ? { background: accent, borderColor: accent, boxShadow: `0 3px 10px ${accent}50` } : {}}
+                            onClick={() => {
+                                setFilterLista(lista);
+                                if (lista !== "Lista 1") setCondicionVenta(0);
+                            }}
+                        >
+                            {lista}
+                        </button>
+                    ))}
+                </div>
+            </div>
+
+            {/* Condición de Venta — solo para Lista 1 */}
+            {filterLista === "Lista 1" && (
+                <div className="animate-fadeIn" style={{
+                    background: "rgba(52,211,153,.06)",
+                    border: "1.5px solid rgba(52,211,153,.2)",
+                    borderRadius: 10, padding: "12px 14px",
+                }}>
+                    <SectionLabel>Condición de Venta</SectionLabel>
+                    <div style={{ display: "flex", gap: 6 }}>
+                        {CONDICIONES_VENTA.map(c => (
+                            <button
+                                key={c.value}
+                                className={`cond-btn ${condicionVenta === c.value ? "active" : ""}`}
+                                onClick={() => setCondicionVenta(c.value)}
+                            >
+                                {c.label}
+                            </button>
+                        ))}
+                    </div>
+                    {condicionVenta > 0 && (
+                        <div style={{ marginTop: 8, fontSize: 11, color: "var(--green)", fontWeight: 500 }}>
+                            💡 Se aplica <strong>{condicionVenta}%</strong> de descuento adicional a Lista 1, acumulable con descuentos de promo/bundle.
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Categoría */}
+            <div>
+                <SectionLabel>Categoría</SectionLabel>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {categorias.map(c => (
+                        <Pill key={c} label={c} active={filterCat === c}
+                            color={CAT_COLOR[c] || "var(--accent)"}
+                            emoji={filterCat === c ? CAT_EMOJI[c] : undefined}
+                            onClick={() => handleCatClick(c)} />
+                    ))}
+                </div>
+            </div>
+
+            {/* Stock */}
+            <div>
+                <SectionLabel>Stock</SectionLabel>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+                    {["Todos", "Con Stock", "Sin Stock"].map(s => (
+                        <Pill key={s} label={s} active={filterStock === s} color={accent} onClick={() => setFilterStock(s)} />
+                    ))}
+                </div>
+            </div>
+
+            {/* Marca (A-Z) + Línea + Tipo */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+                {/* Marca */}
+                <div>
+                    <SectionLabel>Marca</SectionLabel>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 2, marginBottom: 7 }}>
+                        {ALPHABET.map(l => {
+                            const hasItems = letrasConMarcas.has(l);
+                            const active = filterLetra === l;
+                            return (
+                                <button key={l}
+                                    className={`alpha-btn ${hasItems ? "has-items" : ""} ${active ? "active" : ""}`}
+                                    style={active ? { background: accent, borderColor: accent } : {}}
+                                    onClick={() => {
+                                        if (!hasItems) return;
+                                        const next = active ? "" : l;
+                                        setFilterLetra(next);
+                                        setFilterMarca("Todas");
+                                    }}
+                                >{l}</button>
+                            );
+                        })}
+                    </div>
+                    {filterLetra ? (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, maxHeight: 84, overflowY: "auto", padding: "2px 0" }}>
+                            <Pill label="Todas" active={filterMarca === "Todas"} color={accent} onClick={() => setFilterMarca("Todas")} />
+                            {marcasDeLetra.map(m => (
+                                <Pill key={m} label={m} active={filterMarca === m} color={accent} onClick={() => setFilterMarca(m)} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div style={{ fontSize: 11, color: "var(--text-muted)", fontStyle: "italic" }}>
+                            Seleccioná una letra
+                        </div>
+                    )}
+                </div>
+
+                {/* Línea */}
+                <div>
+                    <SectionLabel>Línea</SectionLabel>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                        {lineas.map(l => (
+                            <Pill key={l} label={l} active={filterLinea === l} color={accent} onClick={() => setFilterLinea(l)} />
+                        ))}
+                    </div>
+                </div>
+
+                {/* Tipo */}
+                <div>
+                    <SectionLabel>Tipo de Producto</SectionLabel>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>
+                        {tipos.map(t => (
+                            <Pill key={t} label={t} active={filterTipo === t} color={accent} onClick={() => setFilterTipo(t)} />
+                        ))}
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+}
