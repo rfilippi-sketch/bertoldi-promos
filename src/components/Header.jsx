@@ -36,7 +36,7 @@ export default function Header({
                             Bertoldi · Herramienta Interna
                         </div>
                         <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: "-.02em", lineHeight: 1.2 }}>
-                            Promos <span style={{ color: accent }}>Lab</span>
+                            Promos <span style={{ color: accent }}>Lab</span> <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 400 }}>v1.1</span>
                         </div>
                     </div>
                 </div>
