@@ -64,7 +64,7 @@ export default function Login({ onLogin }) {
                 </div>
 
                 <div className="login-title">
-                    Promos <span style={{ color: 'var(--accent)' }}>Lab</span>
+                    Promos <span style={{ color: 'var(--accent)' }}>Lab</span> <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 400, marginLeft: 8 }}>v1.1</span>
                 </div>
                 <div className="login-subtitle">
                     Bertoldi · Herramienta Interna de Promociones
