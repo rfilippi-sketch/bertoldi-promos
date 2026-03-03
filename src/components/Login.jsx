@@ -1,58 +1,107 @@
-import { useState } from 'react';
-
-// Usuarios predefinidos (en producción esto vendría de una base de datos)
-const USERS = [
-    { username: 'admin', password: 'bertoldi2026', role: 'admin', name: 'Administrador' },
-    { username: 'usuario1', password: 'promo1', role: 'user', name: 'Usuario 1' },
-    { username: 'usuario2', password: 'promo2', role: 'user', name: 'Usuario 2' },
-    { username: 'usuario3', password: 'promo3', role: 'user', name: 'Usuario 3' },
-    { username: 'usuario4', password: 'promo4', role: 'user', name: 'Usuario 4' },
-    { username: 'usuario5', password: 'promo5', role: 'user', name: 'Usuario 5' },
-    { username: 'usuario6', password: 'promo6', role: 'user', name: 'Usuario 6' },
-    { username: 'usuario7', password: 'promo7', role: 'user', name: 'Usuario 7' },
-    { username: 'usuario8', password: 'promo8', role: 'user', name: 'Usuario 8' },
-    { username: 'usuario9', password: 'promo9', role: 'user', name: 'Usuario 9' },
-    { username: 'usuario10', password: 'promo10', role: 'user', name: 'Usuario 10' },
-];
-
-export function authenticateUser(username, password) {
-    const u = USERS.find(
-        u => u.username.toLowerCase() === username.toLowerCase() && u.password === password
-    );
-    if (u) return { username: u.username, name: u.name, role: u.role };
-    return null;
-}
+import { useState, useEffect } from 'react';
+import { supabase } from '../supabaseClient.js';
 
 export default function Login({ onLogin }) {
+    const [isRegister, setIsRegister] = useState(false);
+    const [nombre, setNombre] = useState('');
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
+    // Limpiar errores al cambiar de modo
+    useEffect(() => {
         setError('');
-        if (!username.trim() || !password.trim()) {
-            setError('Completá usuario y contraseña');
+        setSuccess('');
+    }, [isRegister]);
+
+    const handleLogin = async () => {
+        const { data, error: dbError } = await supabase
+            .from('usuarios_app')
+            .select('*')
+            .eq('usuario', username.toLowerCase())
+            .single();
+
+        if (dbError || !data) {
+            setError('Usuario no encontrado');
             return;
         }
+
+        if (data.password !== password) {
+            setError('Contraseña incorrecta');
+            return;
+        }
+
+        if (data.estado === 'bloqueado') {
+            setError('Tu cuenta está bloqueada por inactividad. Contactá al administrador.');
+            return;
+        }
+
+        if (data.estado === 'pendiente') {
+            setError('Tu cuenta aún no fue activada por el administrador.');
+            return;
+        }
+
+        // Actualizar último login
+        await supabase
+            .from('usuarios_app')
+            .update({ ultimo_login: new Date().toISOString() })
+            .eq('id', data.id);
+
+        onLogin({
+            id: data.id,
+            username: data.usuario,
+            name: data.nombre,
+            role: data.rol
+        });
+    };
+
+    const handleRegister = async () => {
+        if (!nombre.trim() || !username.trim() || !password.trim()) {
+            setError('Completá todos los campos');
+            return;
+        }
+
+        const { error: dbError } = await supabase
+            .from('usuarios_app')
+            .insert([{
+                nombre,
+                usuario: username.toLowerCase(),
+                password,
+                rol: 'user',
+                estado: 'pendiente'
+            }]);
+
+        if (dbError) {
+            if (dbError.code === '23505') setError('El nombre de usuario ya existe');
+            else setError('Error al registrar usuario');
+            return;
+        }
+
+        setSuccess('Registro solicitado. El administrador debe activarte.');
+        setTimeout(() => setIsRegister(false), 3000);
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setError('');
+        setSuccess('');
         setLoading(true);
-        // Simulate brief delay for UX
-        setTimeout(() => {
-            const user = authenticateUser(username, password);
-            if (user) {
-                onLogin(user);
-            } else {
-                setError('Usuario o contraseña incorrectos');
-            }
+
+        try {
+            if (isRegister) await handleRegister();
+            else await handleLogin();
+        } catch (err) {
+            setError('Error de conexión');
+        } finally {
             setLoading(false);
-        }, 400);
+        }
     };
 
     return (
         <div className="login-page">
             <div className="login-card">
-                {/* Logo */}
                 <div style={{ textAlign: 'center', marginBottom: 20 }}>
                     <div style={{
                         width: 56, height: 56, borderRadius: 16,
@@ -67,44 +116,62 @@ export default function Login({ onLogin }) {
                     Promos <span style={{ color: 'var(--accent)' }}>Lab</span> <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 400, marginLeft: 8 }}>v1.1</span>
                 </div>
                 <div className="login-subtitle">
-                    Bertoldi · Herramienta Interna de Promociones
+                    {isRegister ? 'Crear nueva cuenta de vendedor' : 'Bertoldi · Herramienta Interna de Promociones'}
                 </div>
 
                 <form onSubmit={handleSubmit}>
                     {error && <div className="login-error">❌ {error}</div>}
+                    {success && <div style={{ fontSize: 12, color: '#10b981', background: '#ecfdf5', padding: '10px', borderRadius: 8, marginBottom: 15, textAlign: 'center' }}>✅ {success}</div>}
+
+                    {isRegister && (
+                        <div className="login-field">
+                            <label>Nombre Completo</label>
+                            <input
+                                type="text"
+                                placeholder="ej: Juan Pérez"
+                                value={nombre}
+                                onChange={e => setNombre(e.target.value)}
+                                required
+                            />
+                        </div>
+                    )}
 
                     <div className="login-field">
-                        <label htmlFor="login-user">Usuario</label>
+                        <label>Usuario</label>
                         <input
-                            id="login-user"
                             type="text"
-                            placeholder="ej: admin"
+                            placeholder="ej: juan.perez"
                             value={username}
                             onChange={e => setUsername(e.target.value)}
                             autoComplete="username"
-                            autoFocus
+                            required
                         />
                     </div>
 
                     <div className="login-field">
-                        <label htmlFor="login-pass">Contraseña</label>
+                        <label>Contraseña</label>
                         <input
-                            id="login-pass"
                             type="password"
                             placeholder="••••••••"
                             value={password}
                             onChange={e => setPassword(e.target.value)}
                             autoComplete="current-password"
+                            required
                         />
                     </div>
 
                     <button type="submit" className="login-btn" disabled={loading}>
-                        {loading ? '⏳ Ingresando…' : 'Ingresar'}
+                        {loading ? '⏳ Procesando…' : (isRegister ? 'Solicitar Registro' : 'Ingresar')}
                     </button>
                 </form>
 
-                <div style={{ marginTop: 20, textAlign: 'center', fontSize: 11, color: 'var(--text-placeholder)' }}>
-                    Si no tenés credenciales, pedíselas al administrador.
+                <div style={{ marginTop: 20, textAlign: 'center' }}>
+                    <button
+                        onClick={() => setIsRegister(!isRegister)}
+                        style={{ background: 'none', border: 'none', color: 'var(--accent)', fontSize: 13, cursor: 'pointer', fontWeight: 600 }}
+                    >
+                        {isRegister ? '¿Ya tenés cuenta? Ingresá acá' : '¿No tenés cuenta? Registrate acá'}
+                    </button>
                 </div>
             </div>
         </div>

@@ -24,9 +24,10 @@ function VirtualList({ items, visibleHeight, renderRow }) {
 }
 
 export default function ProductList({
-    filtered, selectedIds, tab, productDiscounts,
-    setProductDiscounts, toggleSelect, filterCat, getPrecio,
+    filtered, selectedItems, tab, addEntry, getPrecio,
 }) {
+    const selectedCount = (selectedItems || []).length;
+
     return (
         <div className="card animate-fadeIn" style={{ flex: 1 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
@@ -40,12 +41,13 @@ export default function ProductList({
                         {filtered.length.toLocaleString("es-AR")} resultado{filtered.length !== 1 ? "s" : ""}
                     </span>
                 </div>
-                {selectedIds.length > 0 && (
+                {selectedCount > 0 && (
                     <div style={{
-                        fontSize: 12, fontWeight: 600, color: "var(--accent)",
-                        background: "var(--accent-light)", padding: "3px 10px", borderRadius: 6,
+                        fontSize: 10, fontWeight: 700, color: "var(--green)",
+                        background: "var(--green-bg)", padding: "3px 10px", borderRadius: 6,
+                        textTransform: "uppercase", border: "1px solid rgba(16,185,129,.2)"
                     }}>
-                        {selectedIds.length} seleccionados
+                        🛒 {selectedCount} en presupuesto
                     </div>
                 )}
             </div>
@@ -64,11 +66,9 @@ export default function ProductList({
                         <ProductRow
                             key={p.id}
                             p={p}
-                            selected={selectedIds.includes(p.id)}
+                            selected={selectedItems.some(item => item.id === p.id)}
                             tab={tab}
-                            productDiscount={productDiscounts[p.id] ?? 0}
-                            onToggle={toggleSelect}
-                            onDiscountChange={(id, val) => setProductDiscounts(prev => ({ ...prev, [id]: val }))}
+                            onToggle={() => addEntry(p.id)}
                             getPrecio={getPrecio}
                         />
                     )}

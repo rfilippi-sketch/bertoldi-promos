@@ -20,7 +20,7 @@ function exportAsImage(ref, filename) {
 }
 
 export default function DiscountPanel({
-    discountedProducts, toggleSelect, filterCat, condicionVenta,
+    entries, discountedProducts, updateEntry, removeEntry, filterCat, condicionVenta,
 }) {
     const accent = CAT_COLOR[filterCat] || 'var(--accent)';
     const exportRef = useRef(null);
@@ -29,29 +29,26 @@ export default function DiscountPanel({
         return <EmptyState icon="🏷️" title="Sin productos seleccionados" subtitle="Elegí productos y asignales descuentos individuales" />;
     }
 
-    const totalSinDto = discountedProducts.reduce((s, p) => s + p.precioLista, 0);
-    const totalConDto = discountedProducts.reduce((s, p) => s + p.precioFinal, 0);
-    const totalCosto = discountedProducts.reduce((s, p) => s + p.costo, 0);
-    const totalAhorro = discountedProducts.reduce((s, p) => s + p.ahorro, 0);
+    const totalSinDto = discountedProducts.reduce((s, p) => s + (p.precioLista * p.qty), 0);
+    const totalConDto = discountedProducts.reduce((s, p) => s + (p.precioFinal * p.qty), 0);
+    const totalCosto = discountedProducts.reduce((s, p) => s + (p.costo * p.qty), 0);
+    const totalAhorro = totalSinDto - totalConDto;
     const totalGanancia = totalConDto - totalCosto;
     const totalMargen = totalConDto > 0 ? (totalGanancia / totalConDto) * 100 : 0;
 
     return (
         <>
             <div className="card animate-fadeInRight">
-                <div className="section-label">Descuento por Producto</div>
-                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.7 }}>
-                    Seleccioná productos de la lista e ingresá el % de descuento en cada fila.
-                    {condicionVenta > 0 && (
-                        <span style={{ color: 'var(--green)', fontWeight: 600 }}> La condición de venta ({condicionVenta}%) ya está aplicada.</span>
-                    )}
+                <div className="section-label">Descuento Individual por Ítem</div>
+                <div style={{ fontSize: 13, color: 'var(--text-muted)', lineHeight: 1.5 }}>
+                    Podés agregar el mismo producto varias veces para crear combos (ej. 6 unidades normales + 1 con 100% dto).
                 </div>
             </div>
 
             <div className="card card--highlighted animate-fadeInRight" ref={exportRef}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
-                    <div className="section-label" style={{ marginBottom: 0 }}>Resumen por Producto</div>
-                    <button className="btn-export" onClick={() => exportAsImage(exportRef, 'descuentos-bertoldi.png')}>
+                    <div className="section-label" style={{ marginBottom: 0 }}>Presupuesto Detallado</div>
+                    <button className="btn-export" onClick={() => exportAsImage(exportRef, 'presupuesto-bertoldi.png')}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
                             <polyline points="7 10 12 15 17 10" />
@@ -61,43 +58,57 @@ export default function DiscountPanel({
                     </button>
                 </div>
 
-                <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ maxHeight: 380, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
                     {discountedProducts.map(p => (
-                        <div key={p.id} style={{ paddingBottom: 10, borderBottom: '1px solid var(--border)' }}>
-                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7, gap: 6 }}>
-                                <div className="truncate" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>{p.desc}</div>
-                                <button onClick={() => toggleSelect(p.id)} title="Quitar producto" style={{
-                                    flexShrink: 0, width: 20, height: 20, borderRadius: 5,
-                                    background: 'var(--red-bg)', border: '1.5px solid rgba(248,113,113,.3)',
-                                    color: 'var(--red)', fontSize: 13, fontWeight: 700,
+                        <div key={p.uid} style={{ paddingBottom: 12, borderBottom: '1px solid var(--border)', position: 'relative' }}>
+                            <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 6 }}>
+                                <div className="truncate" style={{ fontSize: 12, fontWeight: 700, color: 'var(--text-primary)', flex: 1 }}>{p.desc}</div>
+                                <button onClick={() => removeEntry(p.uid)} title="Quitar" style={{
+                                    flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                                    background: 'var(--red-bg)', border: '1px solid rgba(248,113,113,.2)',
+                                    color: 'var(--red)', fontSize: 14, fontWeight: 700,
                                     cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                    lineHeight: 1, transition: 'all .15s',
                                 }}>×</button>
                             </div>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 5 }}>
-                                <div style={{ textAlign: 'center', background: 'var(--bg-surface)', borderRadius: 7, padding: '7px 4px' }}>
-                                    <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 3 }}>Lista</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: p.descuento > 0 ? 'var(--text-muted)' : 'var(--text-primary)', textDecoration: p.descuento > 0 ? 'line-through' : 'none' }}>{fmt(p.precioLista)}</div>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                                {/* Qty Controls */}
+                                <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,.15)', borderRadius: 8, padding: 2 }}>
+                                    <button onClick={() => updateEntry(p.uid, { qty: Math.max(0, p.qty - 1) })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>-</button>
+                                    <input type="number" value={p.qty} onChange={ev => updateEntry(p.uid, { qty: Math.max(0, parseInt(ev.target.value) || 0) })}
+                                        style={{ width: 44, textAlign: 'center', background: 'var(--bg-card)', border: '1px solid rgba(0,0,0,.08)', borderRadius: 4, color: accent, fontWeight: 800, fontSize: 13 }} />
+                                    <button onClick={() => updateEntry(p.uid, { qty: p.qty + 1 })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-card)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>+</button>
                                 </div>
-                                <div style={{ textAlign: 'center', background: `${accent}12`, borderRadius: 7, padding: '7px 4px', border: `1px solid ${accent}30` }}>
-                                    <div style={{ fontSize: 9, fontWeight: 600, color: accent, textTransform: 'uppercase', marginBottom: 3 }}>Con Dto.</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: accent }}>{fmt(p.precioFinal)}</div>
+
+                                <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8 }}>
+                                    <div style={{ fontSize: 14, fontWeight: 800, color: accent, fontFamily: 'var(--font-display)' }}>{fmt(p.precioFinal)}</div>
+                                    {p.descuento > 0 && <span style={{ fontSize: 10, fontWeight: 700, background: accent, color: '#fff', padding: '1px 6px', borderRadius: 99 }}>-{p.descuento}%</span>}
                                 </div>
-                                <div style={{ textAlign: 'center', background: mColor(p.margen) === 'var(--green)' ? 'var(--green-bg)' : mColor(p.margen) === 'var(--yellow)' ? 'var(--yellow-bg)' : 'var(--red-bg)', borderRadius: 7, padding: '7px 4px' }}>
-                                    <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 3 }}>Margen</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: mColor(p.margen) }}>{pct(p.margen)}</div>
-                                </div>
-                                <div style={{ textAlign: 'center', background: 'rgba(129,140,248,.08)', borderRadius: 7, padding: '7px 4px' }}>
-                                    <div style={{ fontSize: 9, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: 3 }}>Markup</div>
-                                    <div style={{ fontSize: 11, fontWeight: 700, color: 'var(--accent)' }}>{pct(p.markup)}</div>
+
+                                <div style={{ textAlign: 'center' }}>
+                                    <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase' }}>Dto %</div>
+                                    <input type="number" min={0} max={100}
+                                        value={p.descuento} placeholder="0"
+                                        onChange={ev => updateEntry(p.uid, { discount: Math.min(100, Math.max(0, Number(ev.target.value))) })}
+                                        style={{ width: 48, textAlign: 'center', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 600 }}
+                                    />
                                 </div>
                             </div>
-                            {p.descuento > 0 && (
-                                <div style={{ marginTop: 6, background: 'var(--green-bg)', border: '1px solid rgba(52,211,153,.2)', borderRadius: 6, padding: '5px 10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                    <span style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500 }}>🎁 Cliente ahorra</span>
-                                    <span style={{ fontSize: 12, fontWeight: 700, color: 'var(--green)' }}>{fmt(p.ahorro)}</span>
+
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 5 }}>
+                                <div style={{ textAlign: 'center', background: 'var(--bg-surface)', borderRadius: 7, padding: '5px 4px' }}>
+                                    <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Lista</div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{fmt(p.precioLista)}</div>
                                 </div>
-                            )}
+                                <div style={{ textAlign: 'center', background: mColor(p.margen) === 'var(--green)' ? 'var(--green-bg)' : 'var(--red-bg)', borderRadius: 7, padding: '5px 4px' }}>
+                                    <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Margen</div>
+                                    <div style={{ fontSize: 10, fontWeight: 700, color: mColor(p.margen) }}>{pct(p.margen)}</div>
+                                </div>
+                                <div style={{ textAlign: 'center', background: 'rgba(129,140,248,.08)', borderRadius: 7, padding: '5px 4px' }}>
+                                    <div style={{ fontSize: 8, fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase' }}>Subtotal</div>
+                                    <div style={{ fontSize: 10, fontWeight: 800, color: 'var(--text-primary)' }}>{fmt(p.subtotalFinal)}</div>
+                                </div>
+                            </div>
                         </div>
                     ))}
                 </div>

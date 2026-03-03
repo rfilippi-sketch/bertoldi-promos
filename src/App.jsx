@@ -7,10 +7,23 @@ import FilterPanel from './components/FilterPanel.jsx';
 import ProductList from './components/ProductList.jsx';
 import BundlePanel from './components/BundlePanel.jsx';
 import DiscountPanel from './components/DiscountPanel.jsx';
+import AdminUserPanel from './components/AdminUserPanel.jsx';
 
 const SESSION_KEY = 'bertoldi_user';
 
 export default function BertoldiPromo() {
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      input::-webkit-outer-spin-button,
+      input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+      input[type=number] { -moz-appearance: textfield; }
+      .row-prod:active { transform: scale(0.98); transition: transform 0.1s; }
+    `;
+    document.head.appendChild(style);
+    return () => document.head.removeChild(style);
+  }, []);
+
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem(SESSION_KEY);
@@ -37,6 +50,7 @@ export default function BertoldiPromo() {
 }
 
 function AppContent({ user, onLogout }) {
+  const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const state = usePromoState();
   const accent = CAT_COLOR[state.filterCat] || 'var(--accent)';
   const isAdmin = user.role === 'admin';
@@ -56,6 +70,7 @@ function AppContent({ user, onLogout }) {
         user={user}
         onLogout={onLogout}
         isAdmin={isAdmin}
+        onOpenAdmin={() => setIsAdminPanelOpen(true)}
       />
 
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '20px 20px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
@@ -77,9 +92,9 @@ function AppContent({ user, onLogout }) {
                 Agregar todos ({state.filtered.length.toLocaleString('es-AR')})
               </button>
             )}
-            {state.selectedIds.length > 0 && (
+            {state.selectedItems && state.selectedItems.length > 0 && (
               <button className="btn-action danger" onClick={state.clearAll} style={{ fontSize: 11 }}>
-                ✕ Limpiar selección ({state.selectedIds.length})
+                ✕ Limpiar selección ({state.selectedItems.length})
               </button>
             )}
           </div>
@@ -95,6 +110,7 @@ function AppContent({ user, onLogout }) {
             filterStock={state.filterStock} setFilterStock={state.setFilterStock}
             filterLista={state.filterLista} setFilterLista={state.setFilterLista}
             condicionVenta={state.condicionVenta} setCondicionVenta={state.setCondicionVenta}
+            condicionExtra={state.condicionExtra} setCondicionExtra={state.setCondicionExtra}
             search={state.search} setSearch={state.setSearch}
             categorias={state.categorias}
             ALPHABET={state.ALPHABET}
@@ -109,12 +125,9 @@ function AppContent({ user, onLogout }) {
           {/* Product list */}
           <ProductList
             filtered={state.filtered}
-            selectedIds={state.selectedIds}
+            selectedItems={state.selectedItems}
             tab={state.tab}
-            productDiscounts={state.productDiscounts}
-            setProductDiscounts={state.setProductDiscounts}
-            toggleSelect={state.toggleSelect}
-            filterCat={state.filterCat}
+            addEntry={state.addEntry}
             getPrecio={state.getPrecio}
           />
         </div>
@@ -123,14 +136,15 @@ function AppContent({ user, onLogout }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 76, alignSelf: 'start', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto' }}>
           {state.tab === 'bundle' && (
             <BundlePanel
-              selectedProducts={state.selectedProducts}
+              entries={state.selectedEntries}
               bundleCalc={state.bundleCalc}
               bundleDiscount={state.bundleDiscount} setBundleDiscount={state.setBundleDiscount}
-              bundleProductDiscounts={state.bundleProductDiscounts} setBundleProductDiscounts={state.setBundleProductDiscounts}
               hasIndivBundleDisc={state.hasIndivBundleDisc}
               sliderLocked={state.sliderLocked} inputsLocked={state.inputsLocked}
               resetBundleMode={state.resetBundleMode}
-              toggleSelect={state.toggleSelect}
+              addEntry={state.addEntry}
+              removeEntry={state.removeEntry}
+              updateEntry={state.updateEntry}
               filterCat={state.filterCat}
               condicionVenta={state.condicionVenta}
               getPrecio={state.getPrecio}
@@ -138,14 +152,20 @@ function AppContent({ user, onLogout }) {
           )}
           {state.tab === 'descuento' && (
             <DiscountPanel
+              entries={state.selectedEntries}
               discountedProducts={state.discountedProducts}
-              toggleSelect={state.toggleSelect}
+              updateEntry={state.updateEntry}
+              removeEntry={state.removeEntry}
               filterCat={state.filterCat}
               condicionVenta={state.condicionVenta}
             />
           )}
         </div>
       </div>
+
+      {isAdminPanelOpen && (
+        <AdminUserPanel onClose={() => setIsAdminPanelOpen(false)} />
+      )}
     </div>
   );
 }

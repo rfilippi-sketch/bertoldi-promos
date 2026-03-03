@@ -20,11 +20,10 @@ function exportAsImage(ref, filename) {
 }
 
 export default function BundlePanel({
-    selectedProducts, bundleCalc,
+    entries, bundleCalc,
     bundleDiscount, setBundleDiscount,
-    bundleProductDiscounts, setBundleProductDiscounts,
     hasIndivBundleDisc, sliderLocked, inputsLocked,
-    resetBundleMode, toggleSelect,
+    resetBundleMode, removeEntry, updateEntry,
     filterCat, condicionVenta, getPrecio,
 }) {
     const accent = CAT_COLOR[filterCat] || 'var(--accent)';
@@ -108,61 +107,59 @@ export default function BundlePanel({
 
                 {/* Product list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
-                    {selectedProducts.map(p => {
-                        const indivD = bundleProductDiscounts[p.id] ?? 0;
-                        const precioLista = getPrecio(p);
-                        const precioConD = precioLista * (1 - indivD / 100);
+                    {entries.map(e => {
+                        const precioLista = getPrecio(e);
+                        const precioConD = precioLista * (1 - e.discount / 100);
                         return (
-                            <div key={p.id} style={{
-                                background: inputsLocked ? 'rgba(255,255,255,.02)' : (indivD > 0 ? `${accent}12` : 'var(--bg-surface)'),
-                                border: `1.5px solid ${indivD > 0 ? accent + '40' : 'var(--border)'}`,
+                            <div key={e.uid} style={{
+                                background: inputsLocked ? 'rgba(255,255,255,.02)' : (e.discount > 0 ? `${accent}12` : 'var(--bg-card)'),
+                                border: `1.5px solid ${e.discount > 0 ? accent + '40' : 'var(--border)'}`,
                                 borderRadius: 10, padding: '10px 12px',
                                 opacity: inputsLocked ? 0.55 : 1,
                                 transition: 'all .2s',
                             }}>
                                 <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 8, gap: 6 }}>
                                     <div className="truncate" style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-primary)', flex: 1 }}>
-                                        {p.desc}
+                                        {e.desc}
                                     </div>
-                                    <button onClick={() => toggleSelect(p.id)} title="Quitar del bundle" style={{
-                                        flexShrink: 0, width: 20, height: 20, borderRadius: 5,
-                                        background: 'var(--red-bg)', border: '1.5px solid rgba(248,113,113,.3)',
-                                        color: 'var(--red)', fontSize: 13, fontWeight: 700,
+                                    <button onClick={() => removeEntry(e.uid)} title="Quitar del bundle" style={{
+                                        flexShrink: 0, width: 22, height: 22, borderRadius: 6,
+                                        background: 'var(--red-bg)', border: '1px solid rgba(248,113,113,.2)',
+                                        color: 'var(--red)', fontSize: 14, fontWeight: 700,
                                         cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        lineHeight: 1, transition: 'all .15s',
                                     }}>×</button>
                                 </div>
                                 <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                                    {/* Qty Controls */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,.1)', borderRadius: 8, padding: 2 }}>
+                                        <button onClick={() => updateEntry(e.uid, { qty: Math.max(0, e.qty - 1) })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>-</button>
+                                        <input type="number" value={e.qty} onChange={ev => updateEntry(e.uid, { qty: Math.max(0, parseInt(ev.target.value) || 0) })}
+                                            style={{ width: 44, textAlign: 'center', background: 'var(--bg-card)', border: '1px solid rgba(0,0,0,.08)', borderRadius: 4, color: accent, fontWeight: 800, fontSize: 13 }} />
+                                        <button onClick={() => updateEntry(e.uid, { qty: e.qty + 1 })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>+</button>
+                                    </div>
+
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            {indivD > 0 && (
-                                                <span style={{ fontSize: 11, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{fmt(precioLista)}</span>
-                                            )}
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: indivD > 0 ? accent : 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: e.discount > 0 ? accent : 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                                                 {fmt(precioConD)}
                                             </span>
-                                            {indivD > 0 && (
-                                                <span style={{ fontSize: 11, fontWeight: 700, background: accent, color: '#fff', padding: '1px 7px', borderRadius: 99 }}>
-                                                    -{indivD}%
+                                            {e.discount > 0 && (
+                                                <span style={{ fontSize: 10, fontWeight: 700, background: accent, color: '#fff', padding: '1px 6px', borderRadius: 99 }}>
+                                                    -{e.discount}%
                                                 </span>
                                             )}
                                         </div>
-                                        {indivD > 0 && (
-                                            <div style={{ fontSize: 11, color: 'var(--green)', fontWeight: 500, marginTop: 2 }}>
-                                                Ahorra {fmt(precioLista - precioConD)}
-                                            </div>
-                                        )}
+                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
+                                            Subtotal: {fmt(precioConD * e.qty)}
+                                        </div>
                                     </div>
+
                                     <div style={{ textAlign: 'center', pointerEvents: inputsLocked ? 'none' : 'auto' }}>
-                                        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 3, fontWeight: 600, textTransform: 'uppercase' }}>Dto %</div>
-                                        <input type="number" min={0} max={100} step={1}
-                                            value={indivD} placeholder="0"
-                                            onChange={e => {
-                                                if (inputsLocked) return;
-                                                const val = Math.min(100, Math.max(0, Number(e.target.value)));
-                                                setBundleProductDiscounts(prev => ({ ...prev, [p.id]: val }));
-                                            }}
-                                            style={{ width: 60, opacity: inputsLocked ? 0.4 : 1, cursor: inputsLocked ? 'not-allowed' : 'auto' }}
+                                        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase' }}>Dto %</div>
+                                        <input type="number" min={0} max={100}
+                                            value={e.discount} placeholder="0"
+                                            onChange={ev => updateEntry(e.uid, { discount: Math.min(100, Math.max(0, Number(ev.target.value))) })}
+                                            style={{ width: 48, opacity: inputsLocked ? 0.4 : 1, textAlign: 'center', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 600 }}
                                         />
                                     </div>
                                 </div>
@@ -183,23 +180,23 @@ export default function BundlePanel({
                 {condicionVenta > 0 && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
                         <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Precio lista</span>
-                            <span style={{ fontSize: 13, color: 'var(--text-secondary)', textDecoration: 'line-through' }}>{fmt(bundleCalc.precioNormal)}</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Monto base (P. Lista)</span>
+                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{fmt(bundleCalc.precioNormal)}</span>
                         </div>
                         <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--green)' }}>Cond. de venta ({condicionVenta}%)</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>− {fmt(bundleCalc.ahorroCondicion)}</span>
+                            <span style={{ fontSize: 13, color: 'var(--green)' }}>Bonificación {condicionVenta}%</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>− {fmt(bundleCalc.precioNormal * (condicionVenta / 100))}</span>
                         </div>
-                        <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Precio c/ condición</span>
-                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{fmt(bundleCalc.precioPosCondicion)}</span>
-                        </div>
-                        {bundleCalc.ahorroPromo > 0 && (
+                        {bundleCalc.precioNormal * (1 - condicionVenta / 100) - bundleCalc.precioPosCondicion > 0 && (
                             <div className="price-row">
-                                <span style={{ fontSize: 13, color: accent }}>Descuento promo</span>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: accent }}>− {fmt(bundleCalc.ahorroPromo)}</span>
+                                <span style={{ fontSize: 13, color: '#8b5cf6' }}>Extra Contado 10%</span>
+                                <span style={{ fontSize: 13, fontWeight: 600, color: '#8b5cf6' }}>− {fmt(bundleCalc.precioNormal * (1 - condicionVenta / 100) * 0.1)}</span>
                             </div>
                         )}
+                        <div className="price-row" style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 6, marginTop: 4 }}>
+                            <span style={{ fontSize: 13, fontWeight: 700 }}>Total c/ Condiciones</span>
+                            <span style={{ fontSize: 13, fontWeight: 700 }}>{fmt(bundleCalc.precioPosCondicion)}</span>
+                        </div>
                     </div>
                 )}
 
@@ -214,7 +211,7 @@ export default function BundlePanel({
                             <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
                                 {hasIndivBundleDisc ? 'Descuentos individuales' : `Descuento promo (${bundleDiscount}%)`}
                             </span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)' }}>− {fmt(bundleCalc.ahorro)}</span>
+                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)' }}>− {fmt(bundleCalc.ahorroTotal)}</span>
                         </div>
                     </div>
                 )}
@@ -248,8 +245,8 @@ export default function BundlePanel({
                     <div style={{ fontSize: 28, lineHeight: 1 }}>🎁</div>
                     <div style={{ flex: 1 }}>
                         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Beneficio para el cliente</div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>{fmt(bundleCalc.ahorro)}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(52,211,153,.7)', marginTop: 2 }}>de ahorro comprando el combo</div>
+                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>{fmt(bundleCalc.ahorroTotal)}</div>
+                        <div style={{ fontSize: 11, color: 'rgba(52,211,153,.7)', marginTop: 2 }}>de ahorro total en esta operación</div>
                     </div>
                     {!hasIndivBundleDisc && bundleDiscount > 0 && (
                         <div style={{ textAlign: 'center', background: 'rgba(52,211,153,.15)', borderRadius: 8, padding: '6px 10px', border: '1px solid rgba(52,211,153,.3)' }}>

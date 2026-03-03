@@ -40,6 +40,7 @@ export default function FilterPanel({
     filterStock, setFilterStock,
     filterLista, setFilterLista,
     condicionVenta, setCondicionVenta,
+    condicionExtra, setCondicionExtra,
     search, setSearch,
     // data
     categorias, ALPHABET, letrasConMarcas, marcasDeLetra, lineas, tipos,
@@ -133,12 +134,42 @@ export default function FilterPanel({
                             <button
                                 key={c.value}
                                 className={`cond-btn ${condicionVenta === c.value ? "active" : ""}`}
-                                onClick={() => setCondicionVenta(c.value)}
+                                onClick={() => {
+                                    setCondicionVenta(c.value);
+                                    if (c.value === 0) setCondicionExtra(0);
+                                }}
                             >
                                 {c.label}
                             </button>
                         ))}
                     </div>
+
+                    {/* Sub-condiciones anidadas */}
+                    {condicionVenta > 0 && (
+                        <div className="animate-fadeIn" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px dashed rgba(52,211,153,.3)", display: "flex", alignItems: "center", gap: 10 }}>
+                            <div style={{ fontSize: 10, fontWeight: 700, color: "var(--text-muted)", whiteSpace: "nowrap" }}>EXTRA:</div>
+                            <div style={{ display: "flex", gap: 4, flex: 1 }}>
+                                {[
+                                    { label: 'Cta Cte', value: 0 },
+                                    { label: '10% Contado', value: 10 }
+                                ].map(opt => (
+                                    <button
+                                        key={opt.value}
+                                        onClick={() => setCondicionExtra(opt.value)}
+                                        style={{
+                                            flex: 1, padding: "5px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+                                            border: "1px solid", cursor: "pointer", transition: "all 0.2s",
+                                            background: condicionExtra === opt.value ? "var(--accent)" : "white",
+                                            color: condicionExtra === opt.value ? "white" : "var(--text-muted)",
+                                            borderColor: condicionExtra === opt.value ? "var(--accent)" : "#e2e8f0"
+                                        }}
+                                    >
+                                        {opt.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                 </div>
             )}
 

@@ -16,10 +16,8 @@ export function usePromoState() {
     const [storageStatus, setStorageStatus] = useState("loading");
     const [storageInfo, setStorageInfo] = useState("");
     const [tab, setTab] = useState(() => localStorage.getItem('f_tab') || "bundle");
-    const [selectedIds, setSelectedIds] = useState([]);
-    const [bundleDiscount, setBundleDiscount] = useState(15);
-    const [bundleProductDiscounts, setBundleProductDiscounts] = useState({});
-    const [productDiscounts, setProductDiscounts] = useState({});
+    const [selectedItems, setSelectedItems] = useState([]); // [{ uid, id, qty, discount }]
+    const [bundleDiscount, setBundleDiscount] = useState(0);
     const [filterCat, setFilterCat] = useState(() => localStorage.getItem('f_cat') || "Todas");
     const [filterLetra, setFilterLetra] = useState("");
     const [filterMarca, setFilterMarca] = useState("Todas");
@@ -28,10 +26,12 @@ export function usePromoState() {
     const [filterTipo, setFilterTipo] = useState("Todos");
     const [filterStock, setFilterStock] = useState("Todos");
     const [filterLista, setFilterLista] = useState(() => localStorage.getItem('f_lista') || "Lista 3");
-    const [condicionVenta, setCondicionVenta] = useState(0);
+    const [condicionVenta, setCondicionVenta] = useState(0); // 0, 13, 15
+    const [condicionExtra, setCondicionExtra] = useState(0); // 0 (Cta Cte), 10 (Contado)
     const [search, setSearch] = useState("");
     const [csvMsg, setCsvMsg] = useState("");
     const [importing, setImporting] = useState(false);
+    const [user, setUser] = useState(null);
     const fileRef = useRef();
 
     // ── Persistencia de preferencias locales ──────────────────────────────────
@@ -173,7 +173,6 @@ export function usePromoState() {
         return ["Todos", ...unique];
     }, [productos, filterCat, filterLinea]);
 
-    // ── Filtrado ───────────────────────────────────────────────────────────────
     const filtered = useMemo(() => productos.filter(p => {
         if (filterCat !== "Todas" && p.categoria !== filterCat) return false;
         if (filterMarca !== "Todas" && p.marca !== filterMarca) return false;
@@ -191,45 +190,63 @@ export function usePromoState() {
         return true;
     }), [productos, filterCat, filterMarca, filterLinea, filterTipo, search, filterStock]);
 
-    const selectedProducts = useMemo(() => productos.filter(p => selectedIds.includes(p.id)), [productos, selectedIds]);
+    const selectedEntries = useMemo(() => {
+        return selectedItems.map(item => {
+            const p = productos.find(p => p.id === item.id);
+            if (!p) return null;
+            return { ...p, ...item };
+        }).filter(Boolean);
+    }, [productos, selectedItems]);
 
-    const hasIndivBundleDisc = Object.values(bundleProductDiscounts).some(v => (v ?? 0) > 0);
+    const hasIndivBundleDisc = selectedItems.some(item => item.discount > 0);
     const sliderLocked = hasIndivBundleDisc;
     const inputsLocked = !hasIndivBundleDisc && bundleDiscount > 0;
 
     const bundleCalc = useMemo(() => {
-        if (!selectedProducts.length) return null;
-        const costoTotal = selectedProducts.reduce((s, p) => s + p.costo, 0);
-        const precioNormal = selectedProducts.reduce((s, p) => s + getPrecio(p), 0);
+        if (!selectedEntries.length) return null;
+        const costoTotal = selectedEntries.reduce((s, e) => s + (e.costo * e.qty), 0);
+        const precioNormal = selectedEntries.reduce((s, e) => s + (getPrecio(e) * e.qty), 0);
         const condFactor = 1 - condicionVenta / 100;
-        const precioPosCondicion = precioNormal * condFactor;
+        const extraFactor = 1 - condicionExtra / 100;
+        const precioPosCondicion = precioNormal * condFactor * extraFactor;
+
         const precioBundle = hasIndivBundleDisc
-            ? selectedProducts.reduce((s, p) => {
-                const pLista = getPrecio(p) * condFactor;
-                return s + pLista * (1 - ((bundleProductDiscounts[p.id] ?? 0) / 100));
+            ? selectedEntries.reduce((s, e) => {
+                const pLista = getPrecio(e) * condFactor * extraFactor;
+                return s + (pLista * (1 - (e.discount / 100)) * e.qty);
             }, 0)
             : precioPosCondicion * (1 - bundleDiscount / 100);
 
         const ganancia = precioBundle - costoTotal;
         const margen = precioBundle > 0 ? (ganancia / precioBundle) * 100 : 0;
         const markup = costoTotal > 0 ? (ganancia / costoTotal) * 100 : 0;
-        const ahorro = precioNormal - precioBundle;
-        const ahorroCondicion = precioNormal - precioPosCondicion;
-        const ahorroPromo = precioPosCondicion - precioBundle;
-        return { costoTotal, precioNormal, precioPosCondicion, precioBundle, margen, markup, ganancia, ahorro, ahorroCondicion, ahorroPromo };
-    }, [selectedProducts, bundleDiscount, bundleProductDiscounts, hasIndivBundleDisc, getPrecio, condicionVenta]);
+        const ahorroTotal = precioNormal - precioBundle;
+        return { costoTotal, precioNormal, precioPosCondicion, precioBundle, margen, markup, ganancia, ahorroTotal };
+    }, [selectedEntries, bundleDiscount, hasIndivBundleDisc, getPrecio, condicionVenta, condicionExtra]);
 
-    const discountedProducts = useMemo(() => selectedProducts.map(p => {
-        const d = productDiscounts[p.id] ?? 0;
-        const precioLista = getPrecio(p);
-        const precioPosCondicion = precioLista * (1 - condicionVenta / 100);
-        const precioFinal = precioPosCondicion * (1 - d / 100);
-        const ganancia = precioFinal - p.costo;
-        const margen = precioFinal > 0 ? (ganancia / precioFinal) * 100 : 0;
-        const markup = p.costo > 0 ? (ganancia / p.costo) * 100 : 0;
-        const ahorro = precioLista - precioFinal;
-        return { ...p, descuento: d, precioLista, precioPosCondicion, precioFinal, ganancia, margen, markup, ahorro };
-    }), [selectedProducts, productDiscounts, getPrecio, condicionVenta]);
+    const discountedProducts = useMemo(() => selectedEntries.map(e => {
+        const precioLista = getPrecio(e);
+        const condFactor = 1 - condicionVenta / 100;
+        const extraFactor = 1 - condicionExtra / 100;
+        const precioPosCondicion = precioLista * condFactor * extraFactor;
+        const precioFinal = precioPosCondicion * (1 - e.discount / 100);
+        const subtotalCosto = e.costo * e.qty;
+        const subtotalFinal = precioFinal * e.qty;
+        const ganancia = subtotalFinal - subtotalCosto;
+        const margen = subtotalFinal > 0 ? (ganancia / subtotalFinal) * 100 : 0;
+        const markup = subtotalCosto > 0 ? (ganancia / subtotalCosto) * 100 : 0;
+        return {
+            ...e,
+            descuento: e.discount,
+            precioLista,
+            precioPosCondicion,
+            precioFinal,
+            subtotalFinal,
+            ganancia,
+            margen,
+            markup
+        };
+    }), [selectedEntries, getPrecio, condicionVenta, condicionExtra]);
 
     // ── Handlers ──────────────────────────────────────────────────────────────
     const handleCSV = useCallback((e) => {
@@ -241,44 +258,24 @@ export function usePromoState() {
                 const raw = parseCSV(ev.target.result);
                 if (raw.length === 0) throw new Error("No se encontraron productos válidos");
                 const enriched = raw.map(enrich);
-
-                // Preparar para Supabase
                 const toUpload = enriched.map(p => ({
-                    id: p.id,
-                    descripcion: p.desc,
-                    marca: p.marca,
-                    stock: p.stock,
-                    costo: p.costo,
-                    precio_1: p.precio1,
-                    precio_2: p.precio2,
-                    precio_3: p.precio3,
-                    categoria: p.categoria,
-                    tipo: p.tipo
-                    // La línea se calcula al vuelo o se puede añadir la columna a la DB
+                    id: p.id, descripcion: p.desc, marca: p.marca, stock: p.stock,
+                    costo: p.costo, precio_1: p.precio1, precio_2: p.precio2, precio_3: p.precio3,
+                    categoria: p.categoria, tipo: p.tipo
                 }));
-
-                setCsvMsg("Sincronizando con la nube (puede demorar)...");
+                setCsvMsg("Sincronizando con la nube...");
                 setStorageStatus("saving");
-
-                // Upsert masivo en lotes (chunks) de 1000 para evitar límites de payload o truncamiento de Supabase
                 const chunkSize = 1000;
                 for (let i = 0; i < toUpload.length; i += chunkSize) {
                     const chunk = toUpload.slice(i, i + chunkSize);
-                    setCsvMsg(`Sincronizando lote ${i / chunkSize + 1}...`);
-                    const { error } = await supabase
-                        .from('productos')
-                        .upsert(chunk, { onConflict: 'id' });
-
+                    const { error } = await supabase.from('productos').upsert(chunk, { onConflict: 'id' });
                     if (error) throw error;
                 }
-
                 setProductos(enriched);
-                setCsvMsg(`✅ ${enriched.length.toLocaleString("es-AR")} sincronizados en la nube`);
+                setCsvMsg(`✅ ${enriched.length.toLocaleString("es-AR")} sincronizados`);
                 setStorageStatus("saved");
-                setStorageInfo(`${enriched.length.toLocaleString("es-AR")} SKUs en la nube`);
-
-                // Reset selección
-                setSelectedIds([]); setProductDiscounts({}); setBundleProductDiscounts({}); setBundleDiscount(15);
+                setStorageInfo(`${enriched.length.toLocaleString("es-AR")} SKUs`);
+                setSelectedItems([]);
             } catch (err) {
                 setCsvMsg(`❌ ${err.message}`);
                 console.error(err);
@@ -288,28 +285,61 @@ export function usePromoState() {
             }
         };
         reader.readAsText(file);
-        if (fileRef.current) fileRef.current.value = "";
     }, []);
 
-    const toggleSelect = useCallback(id => setSelectedIds(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]), []);
-    const clearAll = useCallback(() => { setSelectedIds([]); setProductDiscounts({}); setBundleProductDiscounts({}); setBundleDiscount(15); }, []);
-    const resetBundleMode = useCallback(() => { setBundleProductDiscounts({}); setBundleDiscount(0); }, []);
-    const selectAll = useCallback(() => setSelectedIds(prev => {
-        const toAdd = filtered.map(p => p.id).filter(id => !prev.includes(id));
-        return [...prev, ...toAdd];
-    }), [filtered]);
+    const toggleSelect = useCallback(id => {
+        setSelectedItems(prev => {
+            const exists = prev.some(item => item.id === id);
+            if (exists) return prev.filter(item => item.id !== id);
+            return [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0 }];
+        });
+    }, []);
+
+    const addEntry = useCallback(id => {
+        setSelectedItems(prev => [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0 }]);
+    }, []);
+
+    const removeEntry = useCallback(uid => {
+        setSelectedItems(prev => prev.filter(item => item.uid !== uid));
+    }, []);
+
+    const updateEntry = useCallback((uid, changes) => {
+        setSelectedItems(prev => prev.map(item => item.uid === uid ? { ...item, ...changes } : item));
+    }, []);
+
+    const clearAll = useCallback(() => { setSelectedItems([]); setBundleDiscount(0); }, []);
+    const resetBundleMode = useCallback(() => {
+        setSelectedItems(prev => prev.map(item => ({ ...item, discount: 0 })));
+        setBundleDiscount(0);
+    }, []);
+
+    const selectAll = useCallback(() => {
+        setSelectedItems(prev => {
+            const next = [...prev];
+            filtered.forEach(p => {
+                if (!next.some(item => item.id === p.id)) {
+                    next.push({ uid: crypto.randomUUID(), id: p.id, qty: 0, discount: 0 });
+                }
+            });
+            return next;
+        });
+    }, [filtered]);
+
+    const logout = () => {
+        setUser(null);
+        localStorage.removeItem('user_bertoldi');
+    };
 
     return {
-        productos, storageStatus, storageInfo, tab, setTab, selectedIds, selectedProducts,
-        bundleDiscount, setBundleDiscount, bundleProductDiscounts, setBundleProductDiscounts,
-        productDiscounts, setProductDiscounts, filterCat, setFilterCat, filterLetra, setFilterLetra,
+        productos, storageStatus, storageInfo, tab, setTab, selectedItems, selectedEntries,
+        bundleDiscount, setBundleDiscount, filterCat, setFilterCat, filterLetra, setFilterLetra,
         filterMarca, setFilterMarca, filterLinea, setFilterLinea, filterTipo, setFilterTipo,
-        filterTipoLetra, setFilterTipoLetra,
-        filterStock, setFilterStock, filterLista, setFilterLista, condicionVenta, setCondicionVenta,
+        filterTipoLetra, setFilterTipoLetra, filterStock, setFilterStock, filterLista, setFilterLista,
+        condicionVenta, setCondicionVenta, condicionExtra, setCondicionExtra,
         search, setSearch, csvMsg, importing, fileRef, ALPHABET, categorias, marcasByLetra,
         letrasConMarcas, marcasDeLetra, tiposByLetra, letrasConTipos, tiposDeLetra,
         lineas, tipos, filtered, hasIndivBundleDisc,
         sliderLocked, inputsLocked, bundleCalc, discountedProducts, getPrecio,
-        handleCSV, toggleSelect, clearAll, resetBundleMode, selectAll,
+        handleCSV, toggleSelect, addEntry, removeEntry, updateEntry, clearAll, resetBundleMode, selectAll, user, setUser, logout
     };
 }

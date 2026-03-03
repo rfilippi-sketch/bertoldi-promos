@@ -13,7 +13,7 @@ const STATUS_CONFIG = {
 export default function Header({
     productos, storageStatus, storageInfo,
     filterCat, importing, csvMsg, fileRef, handleCSV,
-    user, onLogout, isAdmin,
+    user, onLogout, isAdmin, onOpenAdmin
 }) {
     const accent = CAT_COLOR[filterCat] || "var(--accent)";
     const st = STATUS_CONFIG[storageStatus] || STATUS_CONFIG.seed;
@@ -86,9 +86,23 @@ export default function Header({
                         <div className="user-badge">
                             <div>
                                 <div className="user-badge-name">{user.name}</div>
-                                <span className={`user-badge-role ${user.role}`}>
-                                    {user.role === 'admin' ? '🛡️ Admin' : '👤 Usuario'}
-                                </span>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                    <span className={`user-badge-role ${user.role}`}>
+                                        {user.role === 'admin' ? '🛡️ Admin' : '👤 Usuario'}
+                                    </span>
+                                    {isAdmin && (
+                                        <button
+                                            onClick={onOpenAdmin}
+                                            style={{
+                                                background: 'rgba(99,102,241,.1)', border: '1px solid rgba(99,102,241,.3)',
+                                                borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: 'pointer', color: '#6366f1',
+                                                padding: '2px 8px', textTransform: 'uppercase'
+                                            }}
+                                        >
+                                            Panel Admin
+                                        </button>
+                                    )}
+                                </div>
                             </div>
                             <button className="btn-logout" onClick={onLogout}>Salir</button>
                         </div>
