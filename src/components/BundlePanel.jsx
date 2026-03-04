@@ -4,6 +4,8 @@ import { CAT_COLOR } from '../constants/categories.js';
 import { fmt, pct, mColor } from '../utils/formatters.js';
 import { StatCard, MarginHealth } from './StatCard.jsx';
 import EmptyState from './EmptyState.jsx';
+import jsPDF from 'jspdf';
+import ExportPDFTemplate from './ExportPDFTemplate.jsx';
 
 function exportAsImage(ref, filename) {
     if (!ref.current) return;
@@ -28,6 +30,7 @@ export default function BundlePanel({
 }) {
     const accent = CAT_COLOR[filterCat] || 'var(--accent)';
     const exportRef = useRef(null);
+    const pdfTemplateRef = useRef(null);
 
     if (!bundleCalc) {
         return <EmptyState icon="📦" title="Sin productos seleccionados" subtitle="Elegí 2 o más productos para calcular el bundle" />;
@@ -95,15 +98,39 @@ export default function BundlePanel({
                 {/* Header row with export button */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                     <div className="section-label" style={{ marginBottom: 0 }}>Productos en el Bundle</div>
-                    <button className="btn-export" onClick={() => exportAsImage(exportRef, 'bundle-bertoldi.png')}>
-                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                            <polyline points="7 10 12 15 17 10" />
-                            <line x1="12" y1="15" x2="12" y2="3" />
-                        </svg>
-                        Exportar PNG
-                    </button>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => exportAsImage(exportRef, 'bundle.png')} style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            background: 'transparent', border: '1px solid rgba(255,255,255,.1)', color: 'var(--text-muted)',
+                            padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                            transition: 'all .2s'
+                        }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.3)' }}
+                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.1)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                                <polyline points="7 10 12 15 17 10" />
+                                <line x1="12" y1="15" x2="12" y2="3" />
+                            </svg>
+                            PNG
+                        </button>
+                        <button onClick={() => resetBundleMode()} style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--red)',
+                            padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700,
+                            transition: 'all .2s'
+                        }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
+                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
+                            🗑️ Limpiar
+                        </button>
+                    </div>
                 </div>
+
+                {/* hidden PDF template */}
+                <ExportPDFTemplate
+                    ref={pdfTemplateRef}
+                    entries={entries.map(e => ({ ...e, precio: getPrecio(e) }))}
+                    theme={document.documentElement.classList.contains('dark') ? 'dark' : 'light'}
+                />
 
                 {/* Product list */}
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
@@ -255,7 +282,83 @@ export default function BundlePanel({
                         </div>
                     )}
                 </div>
+
+                <div className="divider" />
+
+                {/* Export Actions */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
+                    <button onClick={() => exportToWhatsApp(entries.map(e => ({ ...e, precio: getPrecio(e) })), bundleCalc)} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        background: '#25D366', color: '#fff', border: 'none',
+                        padding: '12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                        boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)', transition: 'all .2s'
+                    }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.098.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-5.824 4.74-10.563 10.564-10.563 5.826 0 10.565 4.739 10.566 10.563 0 5.824-4.741 10.563-10.563 10.564h-.001z" />
+                        </svg>
+                        WhatsApp
+                    </button>
+
+                    <button onClick={() => exportToPDF(pdfTemplateRef, { total: bundleCalc.precioBundle, descuento: bundleCalc.ahorroTotal })} style={{
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                        background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border)',
+                        padding: '12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700,
+                        boxShadow: 'var(--shadow-sm)', transition: 'all .2s'
+                    }} onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
+                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                            <polyline points="14 2 14 8 20 8" />
+                            <line x1="16" y1="13" x2="8" y2="13" />
+                            <line x1="16" y1="17" x2="8" y2="17" />
+                            <polyline points="10 9 9 9 8 9" />
+                        </svg>
+                        Generar PDF
+                    </button>
+                </div>
             </div>
         </>
     );
+}
+
+function exportToPDF(ref, bundleData) {
+    if (!ref.current) return;
+
+    html2canvas(ref.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: null
+    }).then(canvas => {
+        const imgData = canvas.toDataURL('image/png');
+        const pdf = new jsPDF({
+            orientation: 'portrait',
+            unit: 'mm',
+            format: 'a4'
+        });
+
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+
+        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+        pdf.save(`Propuesta_Bertoldi_${new Date().getTime()}.pdf`);
+    });
+}
+
+function exportToWhatsApp(entries, bundleCalc) {
+    let text = `¡Hola! Te armé esta promoción exclusiva:\n\n📦 *Tu Pedido*\n`;
+
+    entries.forEach(e => {
+        const pLista = e.precio * e.qty;
+        text += `• ${e.desc} (x${e.qty}) - Subtotal: $${Math.round(pLista).toLocaleString('es-AR')}\n`;
+    });
+
+    if (bundleCalc.ahorroTotal > 0) {
+        text += `\n🔥 *Ahorro Total:* $${Math.round(bundleCalc.ahorroTotal).toLocaleString('es-AR')}`;
+    }
+
+    text += `\n💰 *Valor Final:* $${Math.round(bundleCalc.precioBundle).toLocaleString('es-AR')}\n\n¡Avisame si te reservo el pedido!`;
+
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
 }
