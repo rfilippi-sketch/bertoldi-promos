@@ -23,24 +23,12 @@ export default function Header({
         <header className="header-glass">
             <div style={{ maxWidth: 1440, margin: "0 auto", padding: "12px 24px", display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
 
-                {/* Logo */}
+                {/* Logo & Titulo */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{
-                        width: 42, height: 42, borderRadius: 12,
-                        background: theme === 'dark' ? `linear-gradient(135deg, ${accent}30, ${accent}10)` : `linear-gradient(135deg, ${accent}20, ${accent}05)`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        border: `1.5px solid ${theme === 'dark' ? accent + '40' : accent + '20'}`,
-                        flexShrink: 0,
-                        boxShadow: `0 4px 14px ${accent}20`,
-                    }}>
-                        <img src="/logo.png" alt="Bertoldi" style={{ width: 28, height: 'auto', filter: theme === 'dark' ? 'invert(1)' : 'none' }} onError={(e) => { e.target.outerHTML = '🎯'; }} />
-                    </div>
-                    <div>
-                        <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
-                            Bertoldi · Herramienta Interna
-                        </div>
-                        <div style={{ fontSize: 20, fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: "-.02em", lineHeight: 1.2 }}>
-                            Promos <span style={{ color: accent }}>Lab</span> <span style={{ fontSize: 10, opacity: 0.5, fontWeight: 400 }}>v1.1</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                        <img src="/logo.png" alt="Bertoldi" style={{ height: 36, filter: theme === 'dark' ? 'invert(1) brightness(1.2)' : 'none', display: 'block' }} />
+                        <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: "0.1em", textTransform: 'uppercase', lineHeight: 1, paddingLeft: 4 }}>
+                            Promos <span style={{ color: accent }}>Lab</span> <span style={{ fontSize: 9, opacity: 0.5, fontWeight: 700 }}>v1.1</span>
                         </div>
                     </div>
                 </div>
