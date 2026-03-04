@@ -25,8 +25,19 @@ export default function Header({
 
                 {/* Logo & Titulo */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                        <img src="/logo.png" alt="Bertoldi" style={{ height: 36, filter: theme === 'dark' ? 'invert(1) brightness(1.2)' : 'none', display: 'block' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, justifyContent: 'center' }}>
+                        <img
+                            src="/logo.png"
+                            alt="Bertoldi"
+                            style={{
+                                width: 140,
+                                height: 'auto',
+                                objectFit: 'contain',
+                                flexShrink: 0,
+                                filter: theme === 'dark' ? 'invert(1) brightness(1.2)' : 'none',
+                                display: 'block'
+                            }}
+                        />
                         <div style={{ fontSize: 16, fontWeight: 800, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: "0.1em", textTransform: 'uppercase', lineHeight: 1, paddingLeft: 4 }}>
                             Promos <span style={{ color: accent }}>Lab</span> <span style={{ fontSize: 9, opacity: 0.5, fontWeight: 700 }}>v1.1</span>
                         </div>
