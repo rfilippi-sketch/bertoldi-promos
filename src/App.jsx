@@ -24,6 +24,23 @@ export default function BertoldiPromo() {
     return () => document.head.removeChild(style);
   }, []);
 
+  const [theme, setTheme] = useState(() => {
+    return localStorage.getItem('bertoldi_theme') || 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    localStorage.setItem('bertoldi_theme', theme);
+  }, [theme]);
+
+  const toggleTheme = () => {
+    setTheme(t => t === 'light' ? 'dark' : 'light');
+  };
+
   const [user, setUser] = useState(() => {
     try {
       const saved = localStorage.getItem(SESSION_KEY);
@@ -46,10 +63,10 @@ export default function BertoldiPromo() {
     return <Login onLogin={handleLogin} />;
   }
 
-  return <AppContent user={user} onLogout={handleLogout} />;
+  return <AppContent user={user} onLogout={handleLogout} theme={theme} toggleTheme={toggleTheme} />;
 }
 
-function AppContent({ user, onLogout }) {
+function AppContent({ user, onLogout, theme, toggleTheme }) {
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
   const state = usePromoState();
   const accent = CAT_COLOR[state.filterCat] || 'var(--accent)';
@@ -71,6 +88,8 @@ function AppContent({ user, onLogout }) {
         onLogout={onLogout}
         isAdmin={isAdmin}
         onOpenAdmin={() => setIsAdminPanelOpen(true)}
+        theme={theme}
+        toggleTheme={toggleTheme}
       />
 
       <div style={{ maxWidth: 1440, margin: '0 auto', padding: '20px 20px', display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>

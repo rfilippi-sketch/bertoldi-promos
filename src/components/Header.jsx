@@ -13,7 +13,8 @@ const STATUS_CONFIG = {
 export default function Header({
     productos, storageStatus, storageInfo,
     filterCat, importing, csvMsg, fileRef, handleCSV,
-    user, onLogout, isAdmin, onOpenAdmin
+    user, onLogout, isAdmin, onOpenAdmin,
+    theme, toggleTheme
 }) {
     const accent = CAT_COLOR[filterCat] || "var(--accent)";
     const st = STATUS_CONFIG[storageStatus] || STATUS_CONFIG.seed;
@@ -26,11 +27,14 @@ export default function Header({
                 <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
                     <div style={{
                         width: 42, height: 42, borderRadius: 12,
-                        background: `linear-gradient(135deg, ${accent}, ${accent}99)`,
+                        background: theme === 'dark' ? `linear-gradient(135deg, ${accent}30, ${accent}10)` : `linear-gradient(135deg, ${accent}20, ${accent}05)`,
                         display: "flex", alignItems: "center", justifyContent: "center",
-                        fontSize: 20, flexShrink: 0,
-                        boxShadow: `0 4px 14px ${accent}50`,
-                    }}>🎯</div>
+                        border: `1.5px solid ${theme === 'dark' ? accent + '40' : accent + '20'}`,
+                        flexShrink: 0,
+                        boxShadow: `0 4px 14px ${accent}20`,
+                    }}>
+                        <img src="/logo.png" alt="Bertoldi" style={{ width: 28, height: 'auto', filter: theme === 'dark' ? 'invert(1)' : 'none' }} onError={(e) => { e.target.outerHTML = '🎯'; }} />
+                    </div>
                     <div>
                         <div style={{ fontSize: 10, fontWeight: 700, letterSpacing: ".12em", textTransform: "uppercase", color: "var(--text-muted)" }}>
                             Bertoldi · Herramienta Interna
@@ -43,6 +47,16 @@ export default function Header({
 
                 {/* Right side */}
                 <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+
+                    {/* Theme Toggle */}
+                    <button onClick={toggleTheme} style={{
+                        width: 42, height: 42, borderRadius: 12, border: '1px solid var(--border)',
+                        background: 'var(--bg-card)', color: 'var(--text-primary)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', fontSize: 18, transition: 'all .2s'
+                    }}>
+                        {theme === 'dark' ? '☀️' : '🌙'}
+                    </button>
 
                     {/* SKU counter */}
                     <div style={{

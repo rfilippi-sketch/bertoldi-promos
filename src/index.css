@@ -819,3 +819,53 @@ input[type="range"]::-webkit-slider-thumb {
 .filter-scroll-box::-webkit-scrollbar-track {
   background: transparent;
 }
+
+.dark {
+  --bg-base: #000000;
+  --bg-surface: #111111;
+  --bg-elevated: #1a1a1a;
+  --bg-hover: #171717;
+  --bg-selected: #1a1c2e;
+  
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --text-muted: #71717a;
+  --text-placeholder: #52525b;
+  
+  --border: #27272a;
+  --border-strong: #3f3f46;
+  --border-focus: #818cf8;
+  
+  --accent: #818cf8;
+  --accent-light: rgba(129, 140, 248, 0.15);
+  --accent-hover: #6366f1;
+  
+  --green: #34d399;
+  --green-bg: rgba(52, 211, 153, 0.1);
+  --green-light: rgba(52, 211, 153, 0.15);
+  --red: #f87171;
+  --red-bg: rgba(248, 113, 113, 0.1);
+  --yellow: #fbbf24;
+  --yellow-bg: rgba(251, 191, 36, 0.1);
+  
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.dark .header-glass {
+  background: rgba(10, 10, 10, 0.75);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+
+.logo-bertoldi {
+  height: 24px;
+  object-fit: contain;
+  transition: filter 0.2s ease;
+  margin-bottom: -2px;
+}
+
+.dark .logo-bertoldi {
+  filter: invert(1) brightness(1.2);
+}
+
