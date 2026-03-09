@@ -8,6 +8,7 @@ import ProductList from './components/ProductList.jsx';
 import BundlePanel from './components/BundlePanel.jsx';
 import DiscountPanel from './components/DiscountPanel.jsx';
 import AdminUserPanel from './components/AdminUserPanel.jsx';
+import { SavedPromosPanel } from './components/SavedPromosPanel.jsx';
 
 const SESSION_KEY = 'bertoldi_user';
 
@@ -152,7 +153,12 @@ function AppContent({ user, onLogout, theme, toggleTheme }) {
         </div>
 
         {/* RIGHT SIDEBAR */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 14, position: 'sticky', top: 76, alignSelf: 'start', maxHeight: 'calc(100vh - 96px)', overflowY: 'auto' }}>
+        <div style={{
+          display: 'flex', flexDirection: 'column', gap: 14,
+          position: 'sticky', top: 76, alignSelf: 'start',
+          maxHeight: 'calc(100vh - 100px)', overflowY: 'auto',
+          paddingRight: 6 // Espacio para el scrollbar
+        }}>
           {state.tab === 'bundle' && (
             <BundlePanel
               entries={state.selectedEntries}
@@ -167,6 +173,7 @@ function AppContent({ user, onLogout, theme, toggleTheme }) {
               filterCat={state.filterCat}
               condicionVenta={state.condicionVenta}
               getPrecio={state.getPrecio}
+              onSave={state.savePromo}
             />
           )}
           {state.tab === 'descuento' && (
@@ -177,8 +184,19 @@ function AppContent({ user, onLogout, theme, toggleTheme }) {
               removeEntry={state.removeEntry}
               filterCat={state.filterCat}
               condicionVenta={state.condicionVenta}
+              onSave={state.savePromo}
             />
           )}
+
+          <div style={{ borderTop: '2px solid var(--border)', paddingTop: 10 }}>
+            <SavedPromosPanel
+              promos={state.savedPromos}
+              loading={state.loadingPromos}
+              onLoad={state.loadPromo}
+              onDelete={state.deletePromo}
+              onRefresh={state.fetchSavedPromos}
+            />
+          </div>
         </div>
       </div>
 

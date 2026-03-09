@@ -32,6 +32,8 @@ export function usePromoState() {
     const [csvMsg, setCsvMsg] = useState("");
     const [importing, setImporting] = useState(false);
     const [user, setUser] = useState(null);
+    const [savedPromos, setSavedPromos] = useState([]);
+    const [loadingPromos, setLoadingPromos] = useState(false);
     const fileRef = useRef();
 
     // ── Persistencia de preferencias locales ──────────────────────────────────
@@ -102,6 +104,13 @@ export function usePromoState() {
 
     useEffect(() => {
         fetchProducts();
+        // Heartbeat para Supabase (evita pausa por inactividad)
+        const keepAlive = async () => {
+            try { await supabase.from('productos').select('id').limit(1); } catch (e) { console.warn("Heartbeat fallido", e); }
+        };
+        keepAlive();
+        const interval = setInterval(keepAlive, 1000 * 60 * 60 * 24); // Una vez al día es suficiente para "actividad"
+        return () => clearInterval(interval);
     }, [fetchProducts]);
 
     // ── Lista activa → precio del producto ────────────────────────────────────
@@ -325,6 +334,68 @@ export function usePromoState() {
         });
     }, [filtered]);
 
+    // ── Historial de Promociones ─────────────────────────────────────────────
+    const fetchSavedPromos = useCallback(async () => {
+        setLoadingPromos(true);
+        try {
+            const { data, error } = await supabase
+                .from('promociones_guardadas')
+                .select('*')
+                .order('veces_usada', { ascending: false });
+            if (error) throw error;
+            setSavedPromos(data || []);
+        } catch (err) {
+            console.error('Error fetching promos:', err);
+        } finally {
+            setLoadingPromos(false);
+        }
+    }, []);
+
+    const savePromo = async (nombre, tipo, items, totales) => {
+        try {
+            const { error } = await supabase.from('promociones_guardadas').insert([{
+                nombre,
+                tipo,
+                datos: items,
+                totales,
+                creado_por: user?.nombre || 'usuario'
+            }]);
+            if (error) throw error;
+            fetchSavedPromos();
+            return { success: true };
+        } catch (err) {
+            console.error('Error saving promo:', err);
+            return { success: false, error: err.message };
+        }
+    };
+
+    const deletePromo = async (id) => {
+        try {
+            const { error } = await supabase.from('promociones_guardadas').delete().eq('id', id);
+            if (error) throw error;
+            setSavedPromos(prev => prev.filter(p => p.id !== id));
+        } catch (err) {
+            console.error('Error deleting promo:', err);
+        }
+    };
+
+    const loadPromo = (promo) => {
+        setTab(promo.tipo);
+        setSelectedItems(promo.datos.map(d => ({ ...d, uid: crypto.randomUUID() })));
+        if (promo.tipo === 'bundle') {
+            const disc = promo.datos[0]?.discount || 0;
+            if (promo.datos.every(d => d.discount === disc)) {
+                setBundleDiscount(disc);
+            }
+        }
+        // Incrementar uso
+        supabase.rpc('increment_promo_usage', { promo_id: promo.id }).catch(() => { });
+    };
+
+    useEffect(() => {
+        fetchSavedPromos();
+    }, [fetchSavedPromos]);
+
     const logout = () => {
         setUser(null);
         localStorage.removeItem('user_bertoldi');
@@ -340,6 +411,7 @@ export function usePromoState() {
         letrasConMarcas, marcasDeLetra, tiposByLetra, letrasConTipos, tiposDeLetra,
         lineas, tipos, filtered, hasIndivBundleDisc,
         sliderLocked, inputsLocked, bundleCalc, discountedProducts, getPrecio,
-        handleCSV, toggleSelect, addEntry, removeEntry, updateEntry, clearAll, resetBundleMode, selectAll, user, setUser, logout
+        handleCSV, toggleSelect, addEntry, removeEntry, updateEntry, clearAll, resetBundleMode, selectAll, user, setUser, logout,
+        savedPromos, loadingPromos, savePromo, deletePromo, loadPromo, fetchSavedPromos
     };
 }

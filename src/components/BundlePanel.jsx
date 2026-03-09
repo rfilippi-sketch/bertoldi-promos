@@ -1,11 +1,11 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import { CAT_COLOR } from '../constants/categories.js';
 import { fmt, pct, mColor } from '../utils/formatters.js';
 import { StatCard, MarginHealth } from './StatCard.jsx';
 import EmptyState from './EmptyState.jsx';
-import jsPDF from 'jspdf';
 import ExportPDFTemplate from './ExportPDFTemplate.jsx';
+import { exportToPDF } from '../utils/pdfExport.js';
 
 function exportAsImage(ref, filename) {
     if (!ref.current) return;
@@ -25,10 +25,10 @@ export default function BundlePanel({
     entries, bundleCalc,
     bundleDiscount, setBundleDiscount,
     hasIndivBundleDisc, sliderLocked, inputsLocked,
-    resetBundleMode, removeEntry, updateEntry,
-    filterCat, condicionVenta, getPrecio,
+    resetBundleMode, addEntry, removeEntry, updateEntry, filterCat, condicionVenta, getPrecio,
+    onSave
 }) {
-    const accent = CAT_COLOR[filterCat] || 'var(--accent)';
+    const [accentColor, setAccentColor] = useState(CAT_COLOR[filterCat] || 'var(--accent)');
     const exportRef = useRef(null);
     const pdfTemplateRef = useRef(null);
 
@@ -43,21 +43,21 @@ export default function BundlePanel({
                 <div style={{ display: 'flex', gap: 8, marginBottom: bundleDiscount > 0 || hasIndivBundleDisc ? 12 : 18 }}>
                     <div style={{
                         flex: 1, padding: '9px 10px', borderRadius: 8, textAlign: 'center',
-                        background: !sliderLocked ? `${accent}15` : 'rgba(255,255,255,.03)',
-                        border: `1.5px solid ${!sliderLocked ? accent : 'var(--border)'}`,
+                        background: !sliderLocked ? `${accentColor}15` : 'rgba(255,255,255,.03)',
+                        border: `1.5px solid ${!sliderLocked ? accentColor : 'var(--border)'}`,
                         opacity: sliderLocked ? 0.45 : 1,
                     }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: !sliderLocked ? accent : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>🎚️ Dto general</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: !sliderLocked ? accentColor : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>🎚️ Dto general</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>Aplica % igual a todos</div>
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', fontSize: 11, color: 'var(--text-muted)', fontWeight: 700 }}>O</div>
                     <div style={{
                         flex: 1, padding: '9px 10px', borderRadius: 8, textAlign: 'center',
-                        background: sliderLocked ? `${accent}15` : 'rgba(255,255,255,.03)',
-                        border: `1.5px solid ${sliderLocked ? accent : 'var(--border)'}`,
+                        background: sliderLocked ? `${accentColor}15` : 'rgba(255,255,255,.03)',
+                        border: `1.5px solid ${sliderLocked ? accentColor : 'var(--border)'}`,
                         opacity: inputsLocked ? 0.45 : 1,
                     }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: sliderLocked ? accent : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>🏷️ Dto por producto</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: sliderLocked ? accentColor : 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.06em' }}>🏷️ Dto por producto</div>
                         <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>% diferente por ítem</div>
                     </div>
                 </div>
@@ -72,55 +72,77 @@ export default function BundlePanel({
                 )}
 
                 {/* Global slider */}
-                <div style={{ opacity: sliderLocked ? 0.3 : 1, pointerEvents: sliderLocked ? 'none' : 'auto', transition: 'opacity .2s', '--accent': accent }}>
+                <div style={{ opacity: sliderLocked ? 0.3 : 1, pointerEvents: sliderLocked ? 'none' : 'auto', transition: 'opacity .2s', '--accent': accentColor }}>
                     <div className="section-label">Descuento general del bundle</div>
                     {sliderLocked && (
                         <div className="lock-badge" style={{ marginBottom: 10 }}>🔒 Bloqueado — hay descuentos individuales activos</div>
                     )}
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 10 }}>
-                        <span style={{ fontSize: 48, fontWeight: 800, color: sliderLocked ? 'var(--text-muted)' : accent, lineHeight: 1, fontFamily: 'var(--font-display)' }}>
+                        <span style={{ fontSize: 48, fontWeight: 800, color: sliderLocked ? 'var(--text-muted)' : accentColor, lineHeight: 1, fontFamily: 'var(--font-display)' }}>
                             {bundleDiscount}
                         </span>
                         <span style={{ fontSize: 22, fontWeight: 600, color: 'var(--text-muted)' }}>%</span>
                     </div>
                     <input type="range" min={0} max={100} value={bundleDiscount}
                         onChange={e => { if (!sliderLocked) setBundleDiscount(Number(e.target.value)); }}
-                        style={{ cursor: sliderLocked ? 'not-allowed' : 'pointer', accentColor: accent }}
+                        style={{ cursor: sliderLocked ? 'not-allowed' : 'pointer', accentColor: accentColor }}
                     />
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: 'var(--text-muted)', marginTop: 5, fontWeight: 500 }}>
-                        <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
-                    </div>
                 </div>
             </div>
 
             {/* Results card */}
-            <div className="card card--highlighted animate-fadeInRight" ref={exportRef} style={{ '--accent': accent }}>
+            <div className="card card--highlighted animate-fadeInRight" ref={exportRef} style={{ '--accent': accentColor }}>
+                <div style={{ background: 'var(--bg-elevated)', border: '1px solid var(--border)', borderRadius: 12, padding: 12, marginBottom: 16 }}>
+                    <div style={{ fontSize: 11, fontWeight: 800, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '.05em', marginBottom: 10 }}>Acciones de la Promo</div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                        <button onClick={() => {
+                            const name = prompt("Nombre para esta promo:");
+                            if (name) onSave(name, 'bundle', entries, bundleCalc);
+                        }} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            background: 'var(--accent)', color: '#fff', border: 'none',
+                            padding: '10px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                            boxShadow: 'var(--shadow-sm)'
+                        }}>
+                            💾 Guardar
+                        </button>
+                        <button onClick={() => exportToWhatsApp(entries.map(e => ({ ...e, precio: getPrecio(e) })), bundleCalc)} style={{
+                            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6,
+                            background: '#25D366', color: '#fff', border: 'none',
+                            padding: '10px', borderRadius: 8, cursor: 'pointer', fontSize: 13, fontWeight: 700,
+                        }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+                                <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.098.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-5.824 4.74-10.563 10.564-10.563 5.826 0 10.565 4.739 10.566 10.563 0 5.824-4.741 10.563-10.563 10.564h-.001z" />
+                            </svg>
+                            WhatsApp
+                        </button>
+                    </div>
+                </div>
+
                 {/* Header row with export button */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
                     <div className="section-label" style={{ marginBottom: 0 }}>Productos en el Bundle</div>
                     <div style={{ display: 'flex', gap: 6 }}>
+                        <button onClick={() => exportToPDF(pdfTemplateRef.current, `Propuesta_Bundle_${new Date().getTime()}.pdf`)} style={{
+                            display: 'flex', alignItems: 'center', gap: 6,
+                            background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
+                            padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700,
+                        }}>
+                            PDF
+                        </button>
                         <button onClick={() => exportAsImage(exportRef, 'bundle.png')} style={{
                             display: 'flex', alignItems: 'center', gap: 6,
-                            background: 'transparent', border: '1px solid rgba(255,255,255,.1)', color: 'var(--text-muted)',
+                            background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-muted)',
                             padding: '6px 10px', borderRadius: 6, cursor: 'pointer', fontSize: 11, fontWeight: 700,
-                            transition: 'all .2s'
-                        }} onMouseEnter={e => { e.currentTarget.style.color = '#fff'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.3)' }}
-                            onMouseLeave={e => { e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.borderColor = 'rgba(255,255,255,.1)' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-                                <polyline points="7 10 12 15 17 10" />
-                                <line x1="12" y1="15" x2="12" y2="3" />
-                            </svg>
+                        }}>
                             PNG
                         </button>
                         <button onClick={() => resetBundleMode()} style={{
                             display: 'flex', alignItems: 'center', gap: 6,
                             background: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.2)', color: 'var(--red)',
                             padding: '6px 12px', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 700,
-                            transition: 'all .2s'
-                        }} onMouseEnter={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.15)'}
-                            onMouseLeave={e => e.currentTarget.style.background = 'rgba(239, 68, 68, 0.1)'}>
-                            🗑️ Limpiar
+                        }}>
+                            🗑️
                         </button>
                     </div>
                 </div>
@@ -133,14 +155,14 @@ export default function BundlePanel({
                 />
 
                 {/* Product list */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 280, overflowY: 'auto' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 16, maxHeight: 240, overflowY: 'auto' }}>
                     {entries.map(e => {
                         const precioLista = getPrecio(e);
                         const precioConD = precioLista * (1 - e.discount / 100);
                         return (
                             <div key={e.uid} style={{
-                                background: inputsLocked ? 'rgba(255,255,255,.02)' : (e.discount > 0 ? `${accent}12` : 'var(--bg-card)'),
-                                border: `1.5px solid ${e.discount > 0 ? accent + '40' : 'var(--border)'}`,
+                                background: inputsLocked ? 'rgba(255,255,255,.02)' : (e.discount > 0 ? `${accentColor}12` : 'var(--bg-card)'),
+                                border: `1.5px solid ${e.discount > 0 ? accentColor + '40' : 'var(--border)'}`,
                                 borderRadius: 10, padding: '10px 12px',
                                 opacity: inputsLocked ? 0.55 : 1,
                                 transition: 'all .2s',
@@ -161,33 +183,19 @@ export default function BundlePanel({
                                     <div style={{ display: 'flex', alignItems: 'center', gap: 2, background: 'rgba(0,0,0,.1)', borderRadius: 8, padding: 2 }}>
                                         <button onClick={() => updateEntry(e.uid, { qty: Math.max(0, e.qty - 1) })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>-</button>
                                         <input type="number" value={e.qty} onChange={ev => updateEntry(e.uid, { qty: Math.max(0, parseInt(ev.target.value) || 0) })}
-                                            style={{ width: 44, textAlign: 'center', background: 'var(--bg-card)', border: '1px solid rgba(0,0,0,.08)', borderRadius: 4, color: accent, fontWeight: 800, fontSize: 13 }} />
+                                            style={{ width: 44, textAlign: 'center', background: 'var(--bg-card)', border: '1px solid rgba(0,0,0,.08)', borderRadius: 4, color: accentColor, fontWeight: 800, fontSize: 13 }} />
                                         <button onClick={() => updateEntry(e.uid, { qty: e.qty + 1 })} style={{ width: 24, height: 24, borderRadius: 6, border: 'none', background: 'var(--bg-surface)', color: 'var(--text-primary)', cursor: 'pointer', fontWeight: 700 }}>+</button>
                                     </div>
 
                                     <div style={{ flex: 1 }}>
                                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                                            <span style={{ fontSize: 14, fontWeight: 800, color: e.discount > 0 ? accent : 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
+                                            <span style={{ fontSize: 14, fontWeight: 800, color: e.discount > 0 ? accentColor : 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>
                                                 {fmt(precioConD)}
                                             </span>
-                                            {e.discount > 0 && (
-                                                <span style={{ fontSize: 10, fontWeight: 700, background: accent, color: '#fff', padding: '1px 6px', borderRadius: 99 }}>
-                                                    -{e.discount}%
-                                                </span>
-                                            )}
                                         </div>
                                         <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
                                             Subtotal: {fmt(precioConD * e.qty)}
                                         </div>
-                                    </div>
-
-                                    <div style={{ textAlign: 'center', pointerEvents: inputsLocked ? 'none' : 'auto' }}>
-                                        <div style={{ fontSize: 9, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 600, textTransform: 'uppercase' }}>Dto %</div>
-                                        <input type="number" min={0} max={100}
-                                            value={e.discount} placeholder="0"
-                                            onChange={ev => updateEntry(e.uid, { discount: Math.min(100, Math.max(0, Number(ev.target.value))) })}
-                                            style={{ width: 48, opacity: inputsLocked ? 0.4 : 1, textAlign: 'center', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--bg-card)', color: 'var(--text-primary)', fontWeight: 600 }}
-                                        />
                                     </div>
                                 </div>
                             </div>
@@ -195,57 +203,9 @@ export default function BundlePanel({
                     })}
                 </div>
 
-                {inputsLocked && (
-                    <div className="lock-badge" style={{ marginBottom: 12 }}>
-                        🔒 Descuentos individuales bloqueados — usá el slider o reiniciá
-                    </div>
-                )}
-
-                <div className="divider" />
-
-                {/* Condición de venta breakdown */}
-                {condicionVenta > 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 6, marginBottom: 10 }}>
-                        <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Monto base (P. Lista)</span>
-                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{fmt(bundleCalc.precioNormal)}</span>
-                        </div>
-                        <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--green)' }}>Bonificación {condicionVenta}%</span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--green)' }}>− {fmt(bundleCalc.precioNormal * (condicionVenta / 100))}</span>
-                        </div>
-                        {bundleCalc.precioNormal * (1 - condicionVenta / 100) - bundleCalc.precioPosCondicion > 0 && (
-                            <div className="price-row">
-                                <span style={{ fontSize: 13, color: '#8b5cf6' }}>Extra Contado 10%</span>
-                                <span style={{ fontSize: 13, fontWeight: 600, color: '#8b5cf6' }}>− {fmt(bundleCalc.precioNormal * (1 - condicionVenta / 100) * 0.1)}</span>
-                            </div>
-                        )}
-                        <div className="price-row" style={{ borderTop: '1px dashed #e2e8f0', paddingTop: 6, marginTop: 4 }}>
-                            <span style={{ fontSize: 13, fontWeight: 700 }}>Total c/ Condiciones</span>
-                            <span style={{ fontSize: 13, fontWeight: 700 }}>{fmt(bundleCalc.precioPosCondicion)}</span>
-                        </div>
-                    </div>
-                )}
-
-                {/* Price breakdown */}
-                {condicionVenta === 0 && (
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 7, marginBottom: 10 }}>
-                        <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>Precio normal</span>
-                            <span style={{ fontSize: 13, color: 'var(--text-muted)', textDecoration: 'line-through' }}>{fmt(bundleCalc.precioNormal)}</span>
-                        </div>
-                        <div className="price-row">
-                            <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
-                                {hasIndivBundleDisc ? 'Descuentos individuales' : `Descuento promo (${bundleDiscount}%)`}
-                            </span>
-                            <span style={{ fontSize: 13, fontWeight: 600, color: 'var(--red)' }}>− {fmt(bundleCalc.ahorroTotal)}</span>
-                        </div>
-                    </div>
-                )}
-
-                <div className="price-final-row" style={{ borderColor: `${accent}30`, background: `${accent}10` }}>
+                <div className="price-final-row" style={{ borderColor: `${accentColor}30`, background: `${accentColor}10` }}>
                     <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--text-primary)', fontFamily: 'var(--font-display)' }}>Precio Bundle</span>
-                    <span style={{ fontSize: 20, fontWeight: 800, color: accent, fontFamily: 'var(--font-display)' }}>{fmt(bundleCalc.precioBundle)}</span>
+                    <span style={{ fontSize: 20, fontWeight: 800, color: accentColor, fontFamily: 'var(--font-display)' }}>{fmt(bundleCalc.precioBundle)}</span>
                 </div>
 
                 <div className="divider" />
@@ -254,16 +214,11 @@ export default function BundlePanel({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                     <StatCard label="Tu costo" value={fmt(bundleCalc.costoTotal)} valueColor="var(--text-secondary)" />
                     <StatCard label="Tu ganancia" value={fmt(bundleCalc.ganancia)} valueColor={bundleCalc.ganancia >= 0 ? 'var(--green)' : 'var(--red)'} />
-                    <StatCard label="Margen" value={pct(bundleCalc.margen)} valueColor={mColor(bundleCalc.margen)} sub="ganancia / precio venta" />
-                    <StatCard label="Markup" value={pct(bundleCalc.markup)} valueColor="var(--accent)" sub="ganancia / costo" />
                 </div>
-
-                {/* Margin health */}
-                <MarginHealth margen={bundleCalc.margen} />
 
                 {/* Client savings */}
                 <div style={{
-                    marginTop: 12,
+                    marginTop: 4,
                     background: 'linear-gradient(135deg, rgba(52,211,153,.08), rgba(52,211,153,.15))',
                     borderRadius: 12, padding: '14px 16px',
                     border: '1.5px solid rgba(52,211,153,.25)',
@@ -271,94 +226,44 @@ export default function BundlePanel({
                 }}>
                     <div style={{ fontSize: 28, lineHeight: 1 }}>🎁</div>
                     <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Beneficio para el cliente</div>
-                        <div style={{ fontSize: 24, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>{fmt(bundleCalc.ahorroTotal)}</div>
-                        <div style={{ fontSize: 11, color: 'rgba(52,211,153,.7)', marginTop: 2 }}>de ahorro total en esta operación</div>
+                        <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Beneficio cliente</div>
+                        <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>{fmt(bundleCalc.ahorroTotal)}</div>
                     </div>
                     {!hasIndivBundleDisc && bundleDiscount > 0 && (
-                        <div style={{ textAlign: 'center', background: 'rgba(52,211,153,.15)', borderRadius: 8, padding: '6px 10px', border: '1px solid rgba(52,211,153,.3)' }}>
-                            <div style={{ fontSize: 18, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)' }}>{bundleDiscount}%</div>
-                            <div style={{ fontSize: 9, color: 'var(--green)', fontWeight: 600 }}>OFF</div>
+                        <div style={{ textAlign: 'center', background: 'rgba(52,211,153,.15)', borderRadius: 8, padding: '4px 8px', border: '1px solid rgba(52,211,153,.3)' }}>
+                            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--green)' }}>{bundleDiscount}%</div>
                         </div>
                     )}
-                </div>
-
-                <div className="divider" />
-
-                {/* Export Actions */}
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 4 }}>
-                    <button onClick={() => exportToWhatsApp(entries.map(e => ({ ...e, precio: getPrecio(e) })), bundleCalc)} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        background: '#25D366', color: '#fff', border: 'none',
-                        padding: '12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                        boxShadow: '0 4px 12px rgba(37, 211, 102, 0.2)', transition: 'all .2s'
-                    }} onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                        onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.098.824zm-3.423-14.416c-6.627 0-12 5.373-12 12s5.373 12 12 12 12-5.373 12-12-5.373-12-12-12zm.029 18.88c-1.161 0-2.305-.292-3.318-.844l-3.677.964.984-3.595c-.607-1.052-.927-2.246-.926-3.468.001-5.824 4.74-10.563 10.564-10.563 5.826 0 10.565 4.739 10.566 10.563 0 5.824-4.741 10.563-10.563 10.564h-.001z" />
-                        </svg>
-                        WhatsApp
-                    </button>
-
-                    <button onClick={() => exportToPDF(pdfTemplateRef, { total: bundleCalc.precioBundle, descuento: bundleCalc.ahorroTotal })} style={{
-                        display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
-                        background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border)',
-                        padding: '12px', borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700,
-                        boxShadow: 'var(--shadow-sm)', transition: 'all .2s'
-                    }} onMouseEnter={e => { e.currentTarget.style.borderColor = accent; e.currentTarget.style.color = accent; }}
-                        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-primary)'; }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                            <polyline points="14 2 14 8 20 8" />
-                            <line x1="16" y1="13" x2="8" y2="13" />
-                            <line x1="16" y1="17" x2="8" y2="17" />
-                            <polyline points="10 9 9 9 8 9" />
-                        </svg>
-                        Generar PDF
-                    </button>
                 </div>
             </div>
         </>
     );
 }
 
-function exportToPDF(ref, bundleData) {
-    if (!ref.current) return;
-
-    html2canvas(ref.current, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: null
-    }).then(canvas => {
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-            orientation: 'portrait',
-            unit: 'mm',
-            format: 'a4'
-        });
-
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-        pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-        pdf.save(`Propuesta_Bertoldi_${new Date().getTime()}.pdf`);
-    });
-}
-
 function exportToWhatsApp(entries, bundleCalc) {
-    let text = `¡Hola! Te armé esta promoción exclusiva:\n\n📦 *Tu Pedido*\n`;
+    const separator = "--------------------------";
+    let text = `Hola! Te arme esta promo exclusiva:\n\n* TU PEDIDO *\n${separator}\n`;
 
     entries.forEach(e => {
         const pLista = e.precio * e.qty;
-        text += `• ${e.desc} (x${e.qty}) - Subtotal: $${Math.round(pLista).toLocaleString('es-AR')}\n`;
+        text += `- ${e.desc} (x${e.qty}) - Subtotal: $${Math.round(pLista).toLocaleString('es-AR')}\n`;
     });
 
+    text += `${separator}\n`;
+
     if (bundleCalc.ahorroTotal > 0) {
-        text += `\n🔥 *Ahorro Total:* $${Math.round(bundleCalc.ahorroTotal).toLocaleString('es-AR')}`;
+        text += `\n* Ahorro Total: $${Math.round(bundleCalc.ahorroTotal).toLocaleString('es-AR')}`;
     }
 
-    text += `\n💰 *Valor Final:* $${Math.round(bundleCalc.precioBundle).toLocaleString('es-AR')}\n\n¡Avisame si te reservo el pedido!`;
+    text += `\n* VALOR FINAL: $${Math.round(bundleCalc.precioBundle).toLocaleString('es-AR')}\n\n${separator}\nAvisame si te reservo el pedido!`;
 
-    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank');
+    const url = `https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`;
+
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
 }

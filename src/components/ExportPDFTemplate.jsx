@@ -6,8 +6,9 @@ const ExportPDFTemplate = forwardRef(({ entries, theme }, ref) => {
     let totalPFinal = 0;
 
     entries.forEach(e => {
-        const precioNormal = e.precio;
-        const precioConD = precioNormal * (1 - e.discount / 100);
+        const precioNormal = e.precio ?? e.precioLista ?? 0;
+        const d = e.discount ?? e.descuento ?? 0;
+        const precioConD = precioNormal * (1 - d / 100);
         totalPLista += (precioNormal * e.qty);
         totalPFinal += (precioConD * e.qty);
     });
@@ -78,15 +79,16 @@ const ExportPDFTemplate = forwardRef(({ entries, theme }, ref) => {
                 </thead>
                 <tbody>
                     {entries.map((e, index) => {
-                        const precioLista = e.precio;
-                        const precioConD = precioLista * (1 - e.discount / 100);
+                        const precioLista = e.precio ?? e.precioLista ?? 0;
+                        const d = e.discount ?? e.descuento ?? 0;
+                        const precioConD = precioLista * (1 - d / 100);
                         return (
                             <tr key={index} style={{ borderBottom: `1px solid ${borderColor}` }}>
                                 <td style={{ padding: '16px 8px', fontWeight: 600, fontSize: 14 }}>{e.desc}</td>
                                 <td style={{ padding: '16px 8px', textAlign: 'center', fontWeight: 700 }}>x{e.qty}</td>
-                                <td style={{ padding: '16px 8px', textAlign: 'right', color: mutedColor, textDecoration: e.discount > 0 ? 'line-through' : 'none' }}>{fmt(precioLista)}</td>
-                                <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: 700, color: e.discount > 0 ? '#34d399' : mutedColor }}>
-                                    {e.discount > 0 ? `-${e.discount}%` : '-'}
+                                <td style={{ padding: '16px 8px', textAlign: 'right', color: mutedColor, textDecoration: d > 0 ? 'line-through' : 'none' }}>{fmt(precioLista)}</td>
+                                <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: 700, color: d > 0 ? '#34d399' : mutedColor }}>
+                                    {d > 0 ? `-${d}%` : '-'}
                                 </td>
                                 <td style={{ padding: '16px 8px', textAlign: 'right', fontWeight: 800 }}>{fmt(precioConD * e.qty)}</td>
                             </tr>
