@@ -198,7 +198,6 @@ export default function BundlePanel({
                                         </div>
                                     </div>
 
-                                    {/* DISCOUNT BOX - RESTORED */}
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 700, textTransform: 'uppercase' }}>Dto %</div>
                                         <input type="number" min={0} max={100}
@@ -228,11 +227,16 @@ export default function BundlePanel({
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 14 }}>
                     <StatCard label="Tu costo" value={fmt(bundleCalc.costoTotal)} valueColor="var(--text-secondary)" />
                     <StatCard label="Tu ganancia" value={fmt(bundleCalc.ganancia)} valueColor={bundleCalc.ganancia >= 0 ? 'var(--green)' : 'var(--red)'} />
+                    <StatCard label="Margen" value={pct(bundleCalc.margen)} valueColor={mColor(bundleCalc.margen)} sub="ganancia / precio venta" />
+                    <StatCard label="Markup" value={pct(bundleCalc.markup)} valueColor="var(--accent)" sub="ganancia / costo" />
                 </div>
+
+                {/* Margin health */}
+                <MarginHealth margen={bundleCalc.margen} />
 
                 {/* Client savings */}
                 <div style={{
-                    marginTop: 4,
+                    marginTop: 10,
                     background: 'linear-gradient(135deg, rgba(52,211,153,.08), rgba(52,211,153,.15))',
                     borderRadius: 12, padding: '14px 16px',
                     border: '1.5px solid rgba(52,211,153,.25)',
