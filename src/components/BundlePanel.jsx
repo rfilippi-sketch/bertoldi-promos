@@ -193,9 +193,23 @@ export default function BundlePanel({
                                                 {fmt(precioConD)}
                                             </span>
                                         </div>
-                                        <div style={{ fontSize: 11, color: 'var(--text-muted)', fontWeight: 500 }}>
-                                            Subtotal: {fmt(precioConD * e.qty)}
+                                        <div style={{ fontSize: 10, color: 'var(--text-muted)', fontWeight: 500 }}>
+                                            {fmt(precioConD * e.qty)}
                                         </div>
+                                    </div>
+
+                                    {/* DISCOUNT BOX - RESTORED */}
+                                    <div style={{ textAlign: 'center' }}>
+                                        <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 700, textTransform: 'uppercase' }}>Dto %</div>
+                                        <input type="number" min={0} max={100}
+                                            value={e.discount} placeholder="0"
+                                            onChange={ev => updateEntry(e.uid, { discount: Math.min(100, Math.max(0, Number(ev.target.value))) })}
+                                            style={{
+                                                width: 42, padding: '4px 0', textAlign: 'center', border: '1.5px solid var(--border)',
+                                                borderRadius: 6, background: 'var(--bg-card)', color: accentColor,
+                                                fontWeight: 800, fontSize: 12, outline: 'none'
+                                            }}
+                                        />
                                     </div>
                                 </div>
                             </div>
@@ -229,11 +243,6 @@ export default function BundlePanel({
                         <div style={{ fontSize: 10, fontWeight: 700, color: 'var(--green)', textTransform: 'uppercase', letterSpacing: '.07em' }}>Beneficio cliente</div>
                         <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--green)', fontFamily: 'var(--font-display)', lineHeight: 1.1 }}>{fmt(bundleCalc.ahorroTotal)}</div>
                     </div>
-                    {!hasIndivBundleDisc && bundleDiscount > 0 && (
-                        <div style={{ textAlign: 'center', background: 'rgba(52,211,153,.15)', borderRadius: 8, padding: '4px 8px', border: '1px solid rgba(52,211,153,.3)' }}>
-                            <div style={{ fontSize: 16, fontWeight: 800, color: 'var(--green)' }}>{bundleDiscount}%</div>
-                        </div>
-                    )}
                 </div>
             </div>
         </>
