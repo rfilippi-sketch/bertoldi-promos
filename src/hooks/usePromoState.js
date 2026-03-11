@@ -213,7 +213,7 @@ export function usePromoState() {
 
     const bundleCalc = useMemo(() => {
         if (!selectedEntries.length) return null;
-        const costoTotal = selectedEntries.reduce((s, e) => s + (e.costo * e.qty), 0);
+        const costoTotal = selectedEntries.reduce((s, e) => s + (e.isFree ? 0 : e.costo * e.qty), 0);
         const precioNormal = selectedEntries.reduce((s, e) => s + (getPrecio(e) * e.qty), 0);
         const condFactor = 1 - condicionVenta / 100;
         const extraFactor = 1 - condicionExtra / 100;
@@ -239,7 +239,7 @@ export function usePromoState() {
         const extraFactor = 1 - condicionExtra / 100;
         const precioPosCondicion = precioLista * condFactor * extraFactor;
         const precioFinal = precioPosCondicion * (1 - e.discount / 100);
-        const subtotalCosto = e.costo * e.qty;
+        const subtotalCosto = e.isFree ? 0 : (e.costo * e.qty);
         const subtotalFinal = precioFinal * e.qty;
         const ganancia = subtotalFinal - subtotalCosto;
         const margen = subtotalFinal > 0 ? (ganancia / subtotalFinal) * 100 : 0;
@@ -300,12 +300,12 @@ export function usePromoState() {
         setSelectedItems(prev => {
             const exists = prev.some(item => item.id === id);
             if (exists) return prev.filter(item => item.id !== id);
-            return [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0 }];
+            return [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0, isFree: false }];
         });
     }, []);
 
     const addEntry = useCallback(id => {
-        setSelectedItems(prev => [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0 }]);
+        setSelectedItems(prev => [...prev, { uid: crypto.randomUUID(), id, qty: 0, discount: 0, isFree: false }]);
     }, []);
 
     const removeEntry = useCallback(uid => {
@@ -327,7 +327,7 @@ export function usePromoState() {
             const next = [...prev];
             filtered.forEach(p => {
                 if (!next.some(item => item.id === p.id)) {
-                    next.push({ uid: crypto.randomUUID(), id: p.id, qty: 0, discount: 0 });
+                    next.push({ uid: crypto.randomUUID(), id: p.id, qty: 0, discount: 0, isFree: false });
                 }
             });
             return next;

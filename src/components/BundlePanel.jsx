@@ -198,6 +198,14 @@ export default function BundlePanel({
                                         </div>
                                     </div>
 
+                                    <label style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', cursor: 'pointer', gap: 4, marginRight: 4 }}>
+                                        <span style={{ fontSize: 8, color: e.isFree ? accentColor : 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', transition: 'color .2s' }}>Sin Costo</span>
+                                        <input type="checkbox" checked={e.isFree || false}
+                                            onChange={ev => updateEntry(e.uid, { isFree: ev.target.checked })}
+                                            style={{ accentColor: accentColor, width: 16, height: 16, cursor: 'pointer', margin: 0 }}
+                                        />
+                                    </label>
+
                                     <div style={{ textAlign: 'center' }}>
                                         <div style={{ fontSize: 8, color: 'var(--text-muted)', marginBottom: 2, fontWeight: 700, textTransform: 'uppercase' }}>Dto %</div>
                                         <input type="number" min={0} max={100}
